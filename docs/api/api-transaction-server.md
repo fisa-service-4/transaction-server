@@ -1,7 +1,8 @@
-# transaction-server API 명세
+# 2. BaaS API Body 명세
 
-> **Base URL:** `/baas/v1` | Port: `8083`
-> **사용 구간:** Transaction Server ↔ Bank/Stock Server
+> **Base URL:** `/baas/v1`
+> **Port:** 8083
+> **사용 구간:** 외부 서비스 <-> Transaction Server
 
 ---
 
@@ -135,6 +136,208 @@
 # BANK API
 
 ---
+
+## BANK-ACCOUNT-001. 계좌 조회
+
+**GET** `/baas/v1/bank/accounts`
+
+### Query Parameters
+
+| 이름     | 타입     | 필수 | 설명                                 |
+| ------ | ------ | -- | ---------------------------------- |
+| status | String | X  | ACTIVE / DORMANT / LOCKED / CLOSED |
+
+### Response `200 OK`
+
+```json id="vk9q0m"
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "accountId": 1001,
+        "userId": 501,
+        "bankCode": "088",
+        "accountNumber": "110-123-456789",
+        "accountName": "내 급여통장",
+        "balance": 3500000,
+        "accountStatus": "ACTIVE"
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## BANK-ACCOUNT-002. 계좌 상세 조회
+
+**GET** `/baas/v1/bank/accounts/{accountId}`
+
+### Response `200 OK`
+
+```json id="dl7jkn"
+{
+  "success": true,
+  "data": {
+    "accountId": 1001,
+    "userId": 501,
+    "bankCode": "088",
+    "accountNumber": "110-123-456789",
+    "accountName": "내 급여통장",
+    "balance": 3500000,
+    "availableBalance": 3200000,
+    "accountStatus": "ACTIVE",
+    "openedAt": "2024-01-15T09:00:00",
+    "closedAt": null,
+    "updatedAt": "2026-05-17T14:22:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## BANK-ACCOUNT-003. 거래내역 조회
+
+**GET** `/baas/v1/bank/accounts/{accountId}/transactions`
+
+### Query Parameters
+
+| 이름       | 타입      | 필수 | 설명                  |
+| -------- | ------- | -- | ------------------- |
+| fromDate | Date    | X  | 조회 시작일 (YYYY-MM-DD) |
+| toDate   | Date    | X  | 조회 종료일 (YYYY-MM-DD) |
+| page     | Integer | X  | 페이지 번호 (기본값: 0)     |
+| size     | Integer | X  | 페이지 크기 (기본값: 20)    |
+
+### Response `200 OK`
+
+```json id="0h2drx"
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "transactionId": 9001,
+        "transactionType": "DEPOSIT",
+        "transactionCategory": "급여",
+        "amount": 3000000,
+        "balanceAfter": 3500000,
+        "transactionChannel": "APP",
+        "transactionStatus": "SUCCESS",
+        "transactionAt": "2026-05-01T09:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 42,
+    "totalPages": 3
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## BANK-ACCOUNT-004. 거래 필터 조회
+
+**GET** `/baas/v1/bank/accounts/{accountId}/transactions/filter`
+
+### Query Parameters
+
+| 이름        | 타입      | 필수 | 설명                                                              |
+| --------- | ------- | -- | --------------------------------------------------------------- |
+| type      | String  | X  | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
+| channel   | String  | X  | APP / AI_AGENT                                                  |
+| status    | String  | X  | SUCCESS / FAILED / CANCELLED                                    |
+| fromDate  | Date    | X  | 조회 시작일 (YYYY-MM-DD)                                             |
+| toDate    | Date    | X  | 조회 종료일 (YYYY-MM-DD)                                             |
+| minAmount | Decimal | X  | 최소 거래 금액                                                        |
+| maxAmount | Decimal | X  | 최대 거래 금액                                                        |
+| page      | Integer | X  | 페이지 번호 (기본값: 0)                                                 |
+| size      | Integer | X  | 페이지 크기 (기본값: 20)                                                |
+
+### Response `200 OK`
+
+```json id="s0yjf6"
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "transactionId": 9005,
+        "transactionType": "WITHDRAW",
+        "transactionCategory": "식비",
+        "amount": 50000,
+        "balanceAfter": 3450000,
+        "transactionChannel": "APP",
+        "transactionStatus": "SUCCESS",
+        "transactionAt": "2026-05-10T13:22:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 5,
+    "totalPages": 1
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## BANK-ACCOUNT-005. 거래 카테고리 조회
+
+**GET** `/baas/v1/bank/accounts/{accountId}/transactions/categories`
+
+### Query Parameters
+
+| 이름       | 타입   | 필수 | 설명                  |
+| -------- | ---- | -- | ------------------- |
+| fromDate | Date | O  | 집계 시작일 (YYYY-MM-DD) |
+| toDate   | Date | O  | 집계 종료일 (YYYY-MM-DD) |
+
+### Response `200 OK`
+
+```json id="xq9yqv"
+{
+  "success": true,
+  "data": {
+    "categories": [
+      {
+        "category": "급여",
+        "totalAmount": 3000000,
+        "count": 1
+      },
+      {
+        "category": "식비",
+        "totalAmount": 280000,
+        "count": 12
+      },
+      {
+        "category": "교통",
+        "totalAmount": 95000,
+        "count": 8
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+
 
 ## BANK-TRANSFER-001. 이체 실행
 
@@ -355,7 +558,34 @@
 
 ---
 
-## STOCK-ACCOUNT-001. 예수금 조회
+## STOCK-ACCOUNT-001. 주문 가능 계좌 조회
+
+**GET** `/baas/v1/stock/accounts`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "accountId": 2001,
+        "accountNumber": "300-123-456789",
+        "accountName": "내 주식 계좌",
+        "bankCode": "039"
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-ACCOUNT-002. 예수금 조회
 
 **GET** `/baas/v1/stocks/accounts/{accountId}/cash-balance`
 
@@ -613,6 +843,37 @@
   }
 }
 ```
+
+
+## STOCK-HOLDING-001. 보유 종목 조회
+
+**GET** `/internal/v1/stock/accounts/{accountId}/holdings`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "stockCode": "005930",
+        "stockName": "삼성전자",
+        "quantity": 20,
+        "averagePrice": 78000,
+        "currentPrice": 82000,
+        "evaluationAmount": 1640000,
+        "unrealizedProfit": 80000,
+        "profitRate": 5.12
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
 
 ---
 
