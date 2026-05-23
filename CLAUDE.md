@@ -110,10 +110,20 @@ app-server/
 ---
 
 ## 7. 참조 문서
+
+### 핵심 (먼저 읽기)
 | 파일 | 언제 참조 |
 | --- | --- |
-| @docs/architecture-index.md | 시스템 구조 파악할 때 |
-| @docs/api/api-index.md | API 개발 시 |
-| @docs/db/db-index.md | DB 작업 시 |
-| @docs/convention/git-convention.md | 브랜치/커밋/PR 규칙 확인할 때 |
-| @docs/tech-stack/tech-stack.md | 기술 스택 확인할 때 |
+| @docs/transaction-server-ref.md | **항상 먼저 참조** — 포트/패키지/테이블/API/에러코드/Saga 상태 압축 정리 |
+
+### 상세 원본 문서
+| 파일 | 언제 참조 |
+| --- | --- |
+| @docs/api/api-transaction-server.md | BaaS API 상세 스펙 확인 시 |
+| @docs/db/db-transaction-spec.md | 거래 DB 테이블 상세 설계 시 |
+| @docs/api/api-convention.md | 응답 포맷 / 헤더 규칙 확인 시 |
+| @docs/api/error-code.md | 전체 에러 코드 확인 시 |
+| @docs/convention/git-convention.md | 브랜치/커밋/PR 규칙 확인 시 |
+| @docs/architecture/architecture-index.md | 시스템 전체 구조 파악 시 |
+| @docs/api/api-index.md | 타 서버 API 연동 개발 시 |
+| @docs/db/db-index.md | 타 DB 테이블 확인 시 |
