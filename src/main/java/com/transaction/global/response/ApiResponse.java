@@ -26,6 +26,7 @@ public class ApiResponse<T> {
   }
 
   public static <T> ApiResponse<T> fail(String code, String message, String traceId) {
-    return new ApiResponse<>(false, null, ErrorResponse.of(code, message), MetaResponse.of(traceId));
+    return new ApiResponse<>(
+        false, null, ErrorResponse.of(code, message), MetaResponse.of(traceId));
   }
 }
