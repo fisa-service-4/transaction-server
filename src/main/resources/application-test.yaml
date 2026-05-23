@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: transaction-server
+
+  datasource:
+    url: jdbc:oracle:thin:@oracle-transaction:1521/XEPDB1
+    username: finance
+    password: 1234
+    driver-class-name: oracle.jdbc.OracleDriver
