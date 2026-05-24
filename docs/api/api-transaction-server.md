@@ -23,7 +23,7 @@
 
 ```text
 /bank
-/stocks
+/stock
 /total
 ```
 
@@ -189,7 +189,6 @@
     "accountNumber": "110-123-456789",
     "accountName": "내 급여통장",
     "balance": 3500000,
-    "availableBalance": 3200000,
     "accountStatus": "ACTIVE",
     "openedAt": "2024-01-15T09:00:00",
     "closedAt": null,
