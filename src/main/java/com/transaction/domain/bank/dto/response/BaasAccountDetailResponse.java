@@ -17,7 +17,6 @@ public class BaasAccountDetailResponse {
   private String accountNumber;
   private String accountName;
   private BigDecimal balance;
-  private BigDecimal availableBalance;
   private String accountStatus;
   private LocalDateTime openedAt;
   private LocalDateTime closedAt;
