@@ -139,7 +139,7 @@
 
 ## BANK-ACCOUNT-001. 계좌 조회
 
-**GET** `/baas/v1/bank/accounts`
+**GET** `/bank/accounts`
 
 ### Query Parameters
 
@@ -175,7 +175,7 @@
 
 ## BANK-ACCOUNT-002. 계좌 상세 조회
 
-**GET** `/baas/v1/bank/accounts/{accountId}`
+**GET** `/bank/accounts/{accountId}`
 
 ### Response `200 OK`
 
@@ -205,7 +205,7 @@
 
 ## BANK-ACCOUNT-003. 거래내역 조회
 
-**GET** `/baas/v1/bank/accounts/{accountId}/transactions`
+**GET** `/bank/accounts/{accountId}/transactions`
 
 ### Query Parameters
 
@@ -249,7 +249,7 @@
 
 ## BANK-ACCOUNT-004. 거래 필터 조회
 
-**GET** `/baas/v1/bank/accounts/{accountId}/transactions/filter`
+**GET** `/bank/accounts/{accountId}/transactions/filter`
 
 ### Query Parameters
 
@@ -298,7 +298,7 @@
 
 ## BANK-ACCOUNT-005. 거래 카테고리 조회
 
-**GET** `/baas/v1/bank/accounts/{accountId}/transactions/categories`
+**GET** `/bank/accounts/{accountId}/transactions/categories`
 
 ### Query Parameters
 
@@ -341,7 +341,7 @@
 
 ## BANK-TRANSFER-001. 이체 실행
 
-**POST** `/baas/v1/bank/transfers`
+**POST** `/bank/transfers`
 
 > Write API
 > Idempotency-Key 필수
@@ -394,7 +394,7 @@
 
 ## BANK-TRANSFER-002. 이체 승인
 
-**POST** `/baas/v1/bank/transfers/{transferId}/approve`
+**POST** `/bank/transfers/{transferId}/approve`
 
 > Saga 기반 분산 트랜잭션 Commit 단계 수행 API
 > 출금/입금 반영 및 최종 상태 확정 처리
@@ -426,7 +426,7 @@
 
 ## BANK-TRANSFER-003. 이체 결과 조회
 
-**GET** `/baas/v1/bank/transfers/{transferId}`
+**GET** `/bank/transfers/{transferId}`
 
 ### Response `200 OK`
 
@@ -465,7 +465,7 @@
 
 ## STOCK-SEARCH-001. 종목 검색
 
-**GET** `/baas/v1/stocks/search`
+**GET** `/stock/search`
 
 ### Query Parameters
 
@@ -499,7 +499,7 @@
 
 ## STOCK-PRICE-001. 현재가 조회
 
-**GET** `/baas/v1/stocks/{stockCode}/price`
+**GET** `/stock/{stockCode}/price`
 
 ### Response `200 OK`
 
@@ -523,7 +523,7 @@
 
 ## STOCK-CHART-001. 차트 조회
 
-**GET** `/baas/v1/stocks/{stockCode}/charts`
+**GET** `/stock/{stockCode}/charts`
 
 ### Query Parameters
 
@@ -560,7 +560,7 @@
 
 ## STOCK-ACCOUNT-001. 주문 가능 계좌 조회
 
-**GET** `/baas/v1/stock/accounts`
+**GET** `/stock/accounts`
 
 ### Response `200 OK`
 
@@ -587,7 +587,7 @@
 
 ## STOCK-ACCOUNT-002. 예수금 조회
 
-**GET** `/baas/v1/stocks/accounts/{accountId}/cash-balance`
+**GET** `/stock/accounts/{accountId}/cash-balance`
 
 ### Response `200 OK`
 
@@ -609,7 +609,7 @@
 
 ## STOCK-ORDER-001. 주문 생성
 
-**POST** `/baas/v1/stocks/accounts/{accountId}/orders`
+**POST** `/stock/accounts/{accountId}/orders`
 
 > Write API
 > Pin-Token 필수
@@ -671,7 +671,7 @@
 
 ## STOCK-ORDER-002. 주문 취소
 
-**POST** `/baas/v1/stocks/orders/{orderId}/cancel`
+**POST** `/stock/orders/{orderId}/cancel`
 
 > Write API
 > Pin-Token 필수
@@ -700,7 +700,7 @@
 
 ## STOCK-ORDER-003. 주문 조회
 
-**GET** `/baas/v1/stocks/accounts/{accountId}/orders`
+**GET** `/stock/accounts/{accountId}/orders`
 
 ### Query Parameters
 
@@ -747,7 +747,7 @@
 
 ## STOCK-ORDER-004. 주문 상세 조회
 
-**GET** `/baas/v1/stocks/orders/{orderId}`
+**GET** `/stock/orders/{orderId}`
 
 ### Response `200 OK`
 
@@ -780,7 +780,7 @@
 
 ## STOCK-EXECUTION-001. 체결 조회
 
-**GET** `/baas/v1/stocks/accounts/{accountId}/executions`
+**GET** `/stock/accounts/{accountId}/executions`
 
 ### Query Parameters
 
@@ -825,7 +825,7 @@
 
 ## STOCK-RETURN-001. 수익률 조회
 
-**GET** `/baas/v1/stocks/accounts/{accountId}/returns`
+**GET** `/stock/accounts/{accountId}/returns`
 
 ### Response `200 OK`
 
@@ -847,7 +847,7 @@
 
 ## STOCK-HOLDING-001. 보유 종목 조회
 
-**GET** `/internal/v1/stock/accounts/{accountId}/holdings`
+**GET** `/stock/accounts/{accountId}/holdings`
 
 ### Response `200 OK`
 
@@ -883,7 +883,7 @@
 
 ## TOTAL-001. 포트폴리오 조회
 
-**GET** `/baas/v1/total/portfolio`
+**GET** `/total/portfolio`
 
 ### Query Parameters
 
