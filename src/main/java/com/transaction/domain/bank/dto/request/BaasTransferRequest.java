@@ -1,8 +1,8 @@
 package com.transaction.domain.bank.dto.request;
 
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import lombok.Getter;
 
@@ -15,9 +15,7 @@ public class BaasTransferRequest {
 
   @NotBlank private String toAccountNumber;
 
-  @NotNull
-  @DecimalMin(value = "0", inclusive = false)
-  private BigDecimal transferAmount;
+  @NotNull @Positive private BigDecimal transferAmount;
 
   @NotBlank private String requestedBy;
 }
