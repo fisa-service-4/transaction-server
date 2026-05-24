@@ -16,7 +16,7 @@ public class BaasTransferRequest {
   @NotBlank private String toAccountNumber;
 
   @NotNull
-  @DecimalMin(value = "0", exclusive = true)
+  @DecimalMin(value = "0", inclusive = false)
   private BigDecimal transferAmount;
 
   @NotBlank private String requestedBy;
