@@ -16,4 +16,12 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(e.getStatus())
         .body(ApiResponse.fail(e.getCode(), e.getMessage(), traceId));
   }
+
+  @ExceptionHandler(StockCoreException.class)
+  public ResponseEntity<ApiResponse<Void>> handleStockCoreException(
+      StockCoreException e, HttpServletRequest request) {
+    String traceId = (String) request.getAttribute("traceId");
+    return ResponseEntity.status(e.getStatus())
+        .body(ApiResponse.fail(e.getCode(), e.getMessage(), traceId));
+  }
 }
