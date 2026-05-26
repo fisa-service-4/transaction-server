@@ -1,6 +1,22 @@
+server:
+  port: 8083
+
 spring:
   application:
     name: transaction-server
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/finance
+    username: admin
+    password: 1234
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
 
 core:
   bank:
