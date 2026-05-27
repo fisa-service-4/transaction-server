@@ -7,18 +7,8 @@
 
 ## 테스트 사전 조건
 
-- git bash에 winget install jqlang.jq 설치
-- jq 사용하지 않고 테스트
-
-### 필수 서비스 실행 확인
-
-```bash
-# transaction-server 헬스 체크
-curl -s http://localhost:8083/actuator/health
-
-# stock-server 헬스 체크
-curl -s http://localhost:8082/internal/v1/stock/health
-```
+- git bash에 `winget install jqlang.jq` 설치
+- stock-server up
 
 ---
 
@@ -31,15 +21,16 @@ curl -s http://localhost:8082/internal/v1/stock/health
 | 항목 | 값 |
 |---|---|
 | userId | `1` |
+| x_user_id | `1` |
 
 ### 증권 계좌 (stock-server DB)
 
 | 항목 | 값 |
 |---|---|
-| accountId | `2001` |
-| accountNumber | `300-123-456789` |
-| bankCode | `039` (한국투자증권) |
-| cashBalance | `3,000,000` |
+| accountId | `1` |
+| accountNumber | `1234567890` |
+| bankCode | `KIS` |
+| cashBalance | `100,000,000` |
 
 ### 종목
 
@@ -55,15 +46,31 @@ curl -s http://localhost:8082/internal/v1/stock/health
 | transferId | *(이체 실행 후 응답에서 확인)* |
 | orderId | *(주문 생성 후 응답에서 확인)* |
 
+### transaction-server DB 사전 데이터 (user_account_mapping)
+
+> transaction-server가 accountId → x_user_id 를 조회하려면 아래 데이터가 필요합니다.
+
+```sql
+-- 증권 계좌 매핑
+INSERT INTO user_account_mapping (account_id, account_type, user_id, x_user_id)
+VALUES (2001, 'STOCK', 1, 1)
+ON CONFLICT (account_id, account_type) DO NOTHING;
+
+-- 은행 계좌 매핑 (bank API 테스트 시 필요)
+INSERT INTO user_account_mapping (account_id, account_type, user_id, x_user_id)
+VALUES (1001, 'BANK', 1, 1)
+ON CONFLICT (account_id, account_type) DO NOTHING;
+```
+
 ---
 
 ## 공통 헤더 설명
 
-| 헤더 | 설명 | 예시 |
+| 헤더 | 설명 | 적용 대상 |
 |---|---|---|
-| `X-User-Id` | 사용자 ID (필수) | `1` |
-| `X-Trace-Id` | 요청 추적 ID (선택, 없으면 자동 생성) | `test-trace-001` |
-| `Idempotency-Key` | 중복 방지 키 (Write API 필수) | `$(uuidgen)` |
+| `Idempotency-Key` | 중복 방지 키 | 이체 실행 / 주문 생성 / 주문 취소 |
+
+> `X-User-Id`, `X-Trace-Id` 는 transaction-server 내부에서 자동 처리되므로 외부에서 전달하지 않습니다.
 
 ---
 
@@ -71,20 +78,16 @@ curl -s http://localhost:8082/internal/v1/stock/health
 
 ---
 
-## STOCK-SEARCH-001. 종목 검색
+## STOCK-SEARCH-001. 종목 검색 -> 현재 한글 검색은 안됨 ㅜ
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/search?keyword=삼성" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/search?keyword=NAVER" | jq .
 ```
 
 **종목 코드로 검색:**
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/search?keyword=005930" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/search?keyword=005930" | jq .
 ```
 
 ---
@@ -92,17 +95,13 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/search?keyword=005930" \
 ## STOCK-PRICE-001. 현재가 조회
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/price" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/price" | jq .
 ```
 
 **SK하이닉스:**
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/000660/price" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/000660/price" | jq .
 ```
 
 ---
@@ -112,35 +111,27 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/000660/price" \
 **일봉:**
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/charts?interval=DAILY&fromDate=2026-05-01&toDate=2026-05-31" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/charts?interval=DAILY&fromDate=2026-05-01&toDate=2026-05-31" | jq .
 ```
 
 **주봉:**
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/charts?interval=WEEKLY" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/charts?interval=WEEKLY" | jq .
 ```
 
 **월봉:**
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/charts?interval=MONTHLY" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/charts?interval=MONTHLY" | jq .
 ```
 
 ---
 
-## STOCK-ACCOUNT-001. 주문 가능 계좌 조회
+## STOCK-ACCOUNT-001. 주문 가능 계좌 조회 -> 현재 불가능
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts" | jq .
 ```
 
 ---
@@ -148,9 +139,7 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts" \
 ## STOCK-ACCOUNT-002. 예수금 조회
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/cash-balance" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/cash-balance" | jq .
 ```
 
 ---
@@ -158,9 +147,7 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/cash-balance" 
 ## STOCK-HOLDING-001. 보유 종목 조회
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/holdings" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/holdings" | jq .
 ```
 
 ---
@@ -168,17 +155,13 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/holdings" \
 ## STOCK-EXECUTION-001. 체결 내역 조회
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/executions" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/executions" | jq .
 ```
 
 **종목 코드 + 날짜 필터:**
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/executions?stockCode=005930&fromDate=2026-05-01&toDate=2026-05-31&page=0&size=10" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/executions?stockCode=005930&fromDate=2026-05-01&toDate=2026-05-31&page=0&size=10" | jq .
 ```
 
 ---
@@ -186,12 +169,8 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/executions?sto
 ## STOCK-RETURN-001. 수익률 조회
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/returns" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/returns" | jq .
 ```
-
----
 
 ---
 
@@ -204,10 +183,8 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/returns" \
 **지정가 매수:**
 
 ```bash
-curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
+curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/1/orders" \
+  -H "Idempotency-Key: test-key-123" \
   -H "Content-Type: application/json" \
   -d '{
     "stockCode": "005930",
@@ -221,10 +198,8 @@ curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
 **시장가 매수 (price 없음):**
 
 ```bash
-curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
+curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/1/orders" \
+  -H "Idempotency-Key: test-key-123" \
   -H "Content-Type: application/json" \
   -d '{
     "stockCode": "005930",
@@ -237,10 +212,8 @@ curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
 **지정가 매도:**
 
 ```bash
-curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
+curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/1/orders" \
+  -H "Idempotency-Key: test-key-123" \
   -H "Content-Type: application/json" \
   -d '{
     "stockCode": "005930",
@@ -254,10 +227,8 @@ curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
 **에러 케이스 — Validation 실패 (quantity 누락):**
 
 ```bash
-curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
+curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/1/orders" \
+  -H "Idempotency-Key: test-key-123" \
   -H "Content-Type: application/json" \
   -d '{
     "stockCode": "005930",
@@ -269,8 +240,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
 **에러 케이스 — Idempotency-Key 누락:**
 
 ```bash
-curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
-  -H "X-User-Id: 1" \
+curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/1/orders" \
   -H "Content-Type: application/json" \
   -d '{
     "stockCode": "005930",
@@ -288,12 +258,10 @@ curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
 > `orderId`는 STOCK-ORDER-001 응답에서 확인
 
 ```bash
-ORDER_ID=1001
+ORDER_ID=29
 
 curl -s -X POST "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}/cancel" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" \
-  -H "Idempotency-Key: $(uuidgen)" | jq .
+  -H "Idempotency-Key: test-key-123" | jq .
 ```
 
 ---
@@ -301,41 +269,29 @@ curl -s -X POST "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}/cancel" 
 ## STOCK-ORDER-003. 주문 목록 조회
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/orders" | jq .
 ```
 
 **매수 주문만:**
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/orders?orderType=BUY&page=0&size=10" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/orders?orderType=BUY&page=0&size=10" | jq .
 ```
 
 **상태별 필터:**
 
 ```bash
 # 요청 상태
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/orders?status=REQUESTED" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/orders?status=REQUESTED" | jq .
 
 # 체결 완료
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/orders?status=FILLED" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/orders?status=FILLED" | jq .
 
 # 부분 체결
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/orders?status=PARTIAL_FILLED" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/orders?status=PARTIAL_FILLED" | jq .
 
 # 취소
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/orders?status=CANCELLED" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/1/orders?status=CANCELLED" | jq .
 ```
 
 ---
@@ -343,128 +299,9 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/orders?status=
 ## STOCK-ORDER-004. 주문 상세 조회
 
 ```bash
-ORDER_ID=1001
+ORDER_ID=28
 
-curl -s -X GET "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
----
-
----
-
-## 시나리오 테스트 — 전체 흐름
-
-### 시나리오 1. 은행 이체 전체 흐름
-
-```bash
-# Step 1. 이체 실행
-TRANSFER_RESP=$(curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-transfer-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fromAccountId": 1001,
-    "toBankCode": "020",
-    "toAccountNumber": "301-0987-1234",
-    "transferAmount": 50000,
-    "requestedBy": "USER"
-  }')
-echo $TRANSFER_RESP | jq .
-TRANSFER_ID=$(echo $TRANSFER_RESP | jq -r '.data.transferId')
-
-# Step 2. 이체 승인
-curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers/${TRANSFER_ID}/approve" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-transfer-001" \
-  -H "Idempotency-Key: $(uuidgen)" | jq .
-
-# Step 3. 이체 결과 확인
-curl -s -X GET "http://localhost:8083/baas/v1/bank/transfers/${TRANSFER_ID}" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-transfer-001" | jq .
-
-# Step 4. 계좌 잔액 확인
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-transfer-001" | jq '.data.balance'
-```
-
----
-
-### 시나리오 2. 주식 매수 → 보유 종목 확인 흐름
-
-```bash
-# Step 1. 예수금 확인
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/cash-balance" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-order-001" | jq '.data'
-
-# Step 2. 현재가 확인
-curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/price" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-order-001" | jq '.data.currentPrice'
-
-# Step 3. 매수 주문
-ORDER_RESP=$(curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-order-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "stockCode": "005930",
-    "orderType": "BUY",
-    "orderMethod": "LIMIT",
-    "quantity": 5,
-    "price": 82000
-  }')
-echo $ORDER_RESP | jq .
-ORDER_ID=$(echo $ORDER_RESP | jq -r '.data.orderId')
-
-# Step 4. 주문 상태 확인
-curl -s -X GET "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-order-001" | jq '.data.status'
-
-# Step 5. 보유 종목 확인
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts/2001/holdings" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-order-001" | jq '.data.content[]'
-```
-
----
-
-### 시나리오 3. 주문 생성 → 취소 흐름
-
-```bash
-# Step 1. 주문 생성
-ORDER_RESP=$(curl -s -X POST "http://localhost:8083/baas/v1/stock/accounts/2001/orders" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-cancel-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "stockCode": "000660",
-    "orderType": "BUY",
-    "orderMethod": "LIMIT",
-    "quantity": 1,
-    "price": 180000
-  }')
-echo $ORDER_RESP | jq .
-ORDER_ID=$(echo $ORDER_RESP | jq -r '.data.orderId')
-
-# Step 2. 주문 취소
-curl -s -X POST "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}/cancel" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-cancel-001" \
-  -H "Idempotency-Key: $(uuidgen)" | jq .
-
-# Step 3. 취소 결과 확인
-curl -s -X GET "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: scenario-cancel-001" | jq '.data.status'
+curl -s -X GET "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}" | jq .
 ```
 
 ---
@@ -473,6 +310,7 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}" \
 
 | 코드 | 상황 | 발생 API |
 |---|---|---|
+| `MAPPING_001` | accountId / transferId / orderId 에 해당하는 사용자 매핑 없음 | 전체 |
 | `ACCOUNT_001` | 계좌 없음 | bank accounts |
 | `ACCOUNT_002` | 타인 계좌 접근 | bank accounts |
 | `ACCOUNT_003` | 계좌 상태 이상 (LOCKED/CLOSED) | transfer |

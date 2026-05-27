@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,19 +32,14 @@ public class BaasStockAccountController {
   @Operation(summary = "주문 가능 계좌 조회")
   @GetMapping
   public ApiResponse<BaasStockAccountListResponse> getStockAccounts(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
       HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
-    log.info(
-        "[BaasStockAccountController] GET /baas/v1/stock/accounts 요청: userId={}, traceId={}",
-        userId,
-        traceId);
+    log.info("[BaasStockAccountController] GET /baas/v1/stock/accounts 요청: traceId={}", traceId);
 
     ApiResponse<BaasStockAccountListResponse> response =
-        baasStockAccountService.getStockAccounts(userId, traceId);
+        baasStockAccountService.getStockAccounts(traceId);
 
     log.info("[BaasStockAccountController] GET /baas/v1/stock/accounts 완료: traceId={}", traceId);
 
@@ -55,21 +49,17 @@ public class BaasStockAccountController {
   @Operation(summary = "예수금 조회")
   @GetMapping("/{accountId}/cash-balance")
   public ApiResponse<BaasStockCashBalanceResponse> getCashBalance(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
-      @PathVariable Long accountId,
-      HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+      @PathVariable Long accountId, HttpServletRequest httpRequest) {
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/cash-balance 요청: userId={}, traceId={}",
+        "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/cash-balance 요청: traceId={}",
         accountId,
-        userId,
         traceId);
 
     ApiResponse<BaasStockCashBalanceResponse> response =
-        baasStockAccountService.getCashBalance(userId, traceId, accountId);
+        baasStockAccountService.getCashBalance(traceId, accountId);
 
     log.info(
         "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/cash-balance 완료: traceId={}",
@@ -82,21 +72,17 @@ public class BaasStockAccountController {
   @Operation(summary = "보유 종목 조회")
   @GetMapping("/{accountId}/holdings")
   public ApiResponse<BaasStockHoldingListResponse> getHoldings(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
-      @PathVariable Long accountId,
-      HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+      @PathVariable Long accountId, HttpServletRequest httpRequest) {
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/holdings 요청: userId={}, traceId={}",
+        "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/holdings 요청: traceId={}",
         accountId,
-        userId,
         traceId);
 
     ApiResponse<BaasStockHoldingListResponse> response =
-        baasStockAccountService.getHoldings(userId, traceId, accountId);
+        baasStockAccountService.getHoldings(traceId, accountId);
 
     log.info(
         "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/holdings 완료: traceId={}",
@@ -109,8 +95,6 @@ public class BaasStockAccountController {
   @Operation(summary = "체결 내역 조회")
   @GetMapping("/{accountId}/executions")
   public ApiResponse<PageResponse<BaasStockExecutionResponse>> getExecutions(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
       @PathVariable Long accountId,
       @RequestParam(required = false) String stockCode,
       @RequestParam(required = false) String fromDate,
@@ -118,18 +102,16 @@ public class BaasStockAccountController {
       @RequestParam(required = false) Integer page,
       @RequestParam(required = false) Integer size,
       HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/executions 요청: userId={}, traceId={}",
+        "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/executions 요청: traceId={}",
         accountId,
-        userId,
         traceId);
 
     ApiResponse<PageResponse<BaasStockExecutionResponse>> response =
-        baasStockAccountService.getExecutions(
-            userId, traceId, accountId, stockCode, fromDate, toDate, page, size);
+        baasStockAccountService.getExecutions(traceId, accountId, stockCode, fromDate, toDate, page, size);
 
     log.info(
         "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/executions 완료: traceId={}",
@@ -142,21 +124,17 @@ public class BaasStockAccountController {
   @Operation(summary = "수익률 조회")
   @GetMapping("/{accountId}/returns")
   public ApiResponse<BaasStockReturnResponse> getReturns(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
-      @PathVariable Long accountId,
-      HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+      @PathVariable Long accountId, HttpServletRequest httpRequest) {
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/returns 요청: userId={}, traceId={}",
+        "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/returns 요청: traceId={}",
         accountId,
-        userId,
         traceId);
 
     ApiResponse<BaasStockReturnResponse> response =
-        baasStockAccountService.getReturns(userId, traceId, accountId);
+        baasStockAccountService.getReturns(traceId, accountId);
 
     log.info(
         "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/returns 완료: traceId={}",
@@ -166,7 +144,7 @@ public class BaasStockAccountController {
     return response;
   }
 
-  private String resolveTraceId(String xTraceId) {
-    return (xTraceId != null && !xTraceId.isBlank()) ? xTraceId : UUID.randomUUID().toString();
+  private String generateTraceId() {
+    return UUID.randomUUID().toString();
   }
 }

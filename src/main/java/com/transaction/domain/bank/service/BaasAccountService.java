@@ -5,6 +5,7 @@ import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionCategoryListResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionResponse;
+import com.transaction.global.resolver.UserResolver;
 import com.transaction.global.response.ApiResponse;
 import com.transaction.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
@@ -17,13 +18,14 @@ import org.springframework.stereotype.Service;
 public class BaasAccountService {
 
   private final BankCoreClient bankCoreClient;
+  private final UserResolver userResolver;
 
-  public ApiResponse<BaasAccountListResponse> getAccounts(
-      Long userId, String traceId, String status) {
-    log.info("[BaasAccountService] getAccounts 시작: userId={}, traceId={}", userId, traceId);
+  public ApiResponse<BaasAccountListResponse> getAccounts(String traceId, String status) {
+    Long xUserId = userResolver.systemUserId();
+    log.info("[BaasAccountService] getAccounts 시작: xUserId={}, traceId={}", xUserId, traceId);
 
     ApiResponse<BaasAccountListResponse> response =
-        bankCoreClient.getAccounts(userId, traceId, status);
+        bankCoreClient.getAccounts(xUserId, traceId, status);
 
     log.info(
         "[BaasAccountService] bank-server getAccounts 완료: count={}",
@@ -32,16 +34,16 @@ public class BaasAccountService {
     return ApiResponse.success(response.getData(), traceId);
   }
 
-  public ApiResponse<BaasAccountDetailResponse> getAccount(
-      Long userId, String traceId, Long accountId) {
+  public ApiResponse<BaasAccountDetailResponse> getAccount(String traceId, Long accountId) {
+    Long xUserId = userResolver.resolveByAccount(accountId, "BANK");
     log.info(
-        "[BaasAccountService] getAccount 시작: userId={}, traceId={}, accountId={}",
-        userId,
+        "[BaasAccountService] getAccount 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
         traceId,
         accountId);
 
     ApiResponse<BaasAccountDetailResponse> response =
-        bankCoreClient.getAccount(userId, traceId, accountId);
+        bankCoreClient.getAccount(xUserId, traceId, accountId);
 
     log.info("[BaasAccountService] bank-server getAccount 완료: accountId={}", accountId);
 
@@ -49,21 +51,21 @@ public class BaasAccountService {
   }
 
   public ApiResponse<PageResponse<BaasTransactionResponse>> getTransactions(
-      Long userId,
       String traceId,
       Long accountId,
       String fromDate,
       String toDate,
       Integer page,
       Integer size) {
+    Long xUserId = userResolver.resolveByAccount(accountId, "BANK");
     log.info(
-        "[BaasAccountService] getTransactions 시작: userId={}, traceId={}, accountId={}",
-        userId,
+        "[BaasAccountService] getTransactions 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
         traceId,
         accountId);
 
     ApiResponse<PageResponse<BaasTransactionResponse>> response =
-        bankCoreClient.getTransactions(userId, traceId, accountId, fromDate, toDate, page, size);
+        bankCoreClient.getTransactions(xUserId, traceId, accountId, fromDate, toDate, page, size);
 
     log.info(
         "[BaasAccountService] bank-server getTransactions 완료: accountId={}, totalElements={}",
@@ -74,7 +76,6 @@ public class BaasAccountService {
   }
 
   public ApiResponse<PageResponse<BaasTransactionResponse>> getTransactionsFilter(
-      Long userId,
       String traceId,
       Long accountId,
       String type,
@@ -86,15 +87,16 @@ public class BaasAccountService {
       String maxAmount,
       Integer page,
       Integer size) {
+    Long xUserId = userResolver.resolveByAccount(accountId, "BANK");
     log.info(
-        "[BaasAccountService] getTransactionsFilter 시작: userId={}, traceId={}, accountId={}",
-        userId,
+        "[BaasAccountService] getTransactionsFilter 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
         traceId,
         accountId);
 
     ApiResponse<PageResponse<BaasTransactionResponse>> response =
         bankCoreClient.getTransactionsFilter(
-            userId, traceId, accountId, type, channel, status, fromDate, toDate, minAmount,
+            xUserId, traceId, accountId, type, channel, status, fromDate, toDate, minAmount,
             maxAmount, page, size);
 
     log.info(
@@ -106,15 +108,16 @@ public class BaasAccountService {
   }
 
   public ApiResponse<BaasTransactionCategoryListResponse> getTransactionCategories(
-      Long userId, String traceId, Long accountId, String fromDate, String toDate) {
+      String traceId, Long accountId, String fromDate, String toDate) {
+    Long xUserId = userResolver.resolveByAccount(accountId, "BANK");
     log.info(
-        "[BaasAccountService] getTransactionCategories 시작: userId={}, traceId={}, accountId={}",
-        userId,
+        "[BaasAccountService] getTransactionCategories 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
         traceId,
         accountId);
 
     ApiResponse<BaasTransactionCategoryListResponse> response =
-        bankCoreClient.getTransactionCategories(userId, traceId, accountId, fromDate, toDate);
+        bankCoreClient.getTransactionCategories(xUserId, traceId, accountId, fromDate, toDate);
 
     log.info(
         "[BaasAccountService] bank-server getTransactionCategories 완료: accountId={}", accountId);

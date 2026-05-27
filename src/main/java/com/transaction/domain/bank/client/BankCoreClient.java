@@ -78,7 +78,6 @@ public interface BankCoreClient {
   ApiResponse<BaasTransferApproveResponse> approveTransfer(
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
-      @RequestHeader("Idempotency-Key") String idempotencyKey,
       @PathVariable("transferId") Long transferId);
 
   @GetMapping("/internal/v1/bank/transfers/{transferId}")
