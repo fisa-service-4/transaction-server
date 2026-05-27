@@ -36,22 +36,19 @@ public class BaasTransferController {
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public ApiResponse<BaasTransferCreateResponse> createTransfer(
-      @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("Idempotency-Key") String idempotencyKey,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
       @Valid @RequestBody BaasTransferRequest request,
       HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasTransferController] POST /baas/v1/bank/transfers 요청: userId={}, traceId={}, idempotencyKey={}",
-        userId,
+        "[BaasTransferController] POST /baas/v1/bank/transfers 요청: traceId={}, idempotencyKey={}",
         traceId,
         idempotencyKey);
 
     ApiResponse<BaasTransferCreateResponse> response =
-        baasTransferService.createTransfer(userId, traceId, idempotencyKey, request);
+        baasTransferService.createTransfer(traceId, idempotencyKey, request);
 
     log.info(
         "[BaasTransferController] POST /baas/v1/bank/transfers 완료: transferId={}, traceId={}",
@@ -64,28 +61,24 @@ public class BaasTransferController {
   @Operation(summary = "이체 승인")
   @PostMapping("/{transferId}/approve")
   public ApiResponse<BaasTransferApproveResponse> approveTransfer(
-      @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("Idempotency-Key") String idempotencyKey,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
       @PathVariable Long transferId,
       HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasTransferController] POST /baas/v1/bank/transfers/{}/approve 요청: userId={}, traceId={}, idempotencyKey={}",
+        "[BaasTransferController] POST /baas/v1/bank/transfers/{}/approve 요청: traceId={}, idempotencyKey={}",
         transferId,
-        userId,
         traceId,
         idempotencyKey);
 
     ApiResponse<BaasTransferApproveResponse> response =
-        baasTransferService.approveTransfer(userId, traceId, idempotencyKey, transferId);
+        baasTransferService.approveTransfer(traceId, idempotencyKey, transferId);
 
     log.info(
-        "[BaasTransferController] POST /baas/v1/bank/transfers/{}/approve 완료: transferId={}, traceId={}",
+        "[BaasTransferController] POST /baas/v1/bank/transfers/{}/approve 완료: traceId={}",
         transferId,
-        response.getData().getTransferId(),
         traceId);
 
     return response;
@@ -94,21 +87,17 @@ public class BaasTransferController {
   @Operation(summary = "이체 결과 조회")
   @GetMapping("/{transferId}")
   public ApiResponse<BaasTransferDetailResponse> getTransfer(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
-      @PathVariable Long transferId,
-      HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+      @PathVariable Long transferId, HttpServletRequest httpRequest) {
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasTransferController] GET /baas/v1/bank/transfers/{} 요청: userId={}, traceId={}",
+        "[BaasTransferController] GET /baas/v1/bank/transfers/{} 요청: traceId={}",
         transferId,
-        userId,
         traceId);
 
     ApiResponse<BaasTransferDetailResponse> response =
-        baasTransferService.getTransfer(userId, traceId, transferId);
+        baasTransferService.getTransfer(traceId, transferId);
 
     log.info(
         "[BaasTransferController] GET /baas/v1/bank/transfers/{} 완료: traceId={}",
@@ -118,7 +107,7 @@ public class BaasTransferController {
     return response;
   }
 
-  private String resolveTraceId(String xTraceId) {
-    return (xTraceId != null && !xTraceId.isBlank()) ? xTraceId : UUID.randomUUID().toString();
+  private String generateTraceId() {
+    return UUID.randomUUID().toString();
   }
 }

@@ -6,6 +6,7 @@ import com.transaction.domain.stock.dto.response.BaasStockCashBalanceResponse;
 import com.transaction.domain.stock.dto.response.BaasStockExecutionResponse;
 import com.transaction.domain.stock.dto.response.BaasStockHoldingListResponse;
 import com.transaction.domain.stock.dto.response.BaasStockReturnResponse;
+import com.transaction.global.resolver.UserResolver;
 import com.transaction.global.response.ApiResponse;
 import com.transaction.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,13 +19,15 @@ import org.springframework.stereotype.Service;
 public class BaasStockAccountService {
 
   private final StockCoreClient stockCoreClient;
+  private final UserResolver userResolver;
 
-  public ApiResponse<BaasStockAccountListResponse> getStockAccounts(Long userId, String traceId) {
+  public ApiResponse<BaasStockAccountListResponse> getStockAccounts(String traceId) {
+    Long xUserId = userResolver.systemUserId();
     log.info(
-        "[BaasStockAccountService] getStockAccounts 시작: userId={}, traceId={}", userId, traceId);
+        "[BaasStockAccountService] getStockAccounts 시작: xUserId={}, traceId={}", xUserId, traceId);
 
     ApiResponse<BaasStockAccountListResponse> response =
-        stockCoreClient.getStockAccounts(userId, traceId);
+        stockCoreClient.getStockAccounts(xUserId, traceId);
 
     log.info(
         "[BaasStockAccountService] stock-server getStockAccounts 완료: count={}",
@@ -34,31 +37,32 @@ public class BaasStockAccountService {
   }
 
   public ApiResponse<BaasStockCashBalanceResponse> getCashBalance(
-      Long userId, String traceId, Long accountId) {
+      String traceId, Long accountId) {
+    Long xUserId = userResolver.resolveByAccount(accountId, "STOCK");
     log.info(
-        "[BaasStockAccountService] getCashBalance 시작: userId={}, traceId={}, accountId={}",
-        userId,
+        "[BaasStockAccountService] getCashBalance 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
         traceId,
         accountId);
 
     ApiResponse<BaasStockCashBalanceResponse> response =
-        stockCoreClient.getCashBalance(userId, traceId, accountId);
+        stockCoreClient.getCashBalance(xUserId, traceId, accountId);
 
     log.info("[BaasStockAccountService] stock-server getCashBalance 완료: accountId={}", accountId);
 
     return ApiResponse.success(response.getData(), traceId);
   }
 
-  public ApiResponse<BaasStockHoldingListResponse> getHoldings(
-      Long userId, String traceId, Long accountId) {
+  public ApiResponse<BaasStockHoldingListResponse> getHoldings(String traceId, Long accountId) {
+    Long xUserId = userResolver.resolveByAccount(accountId, "STOCK");
     log.info(
-        "[BaasStockAccountService] getHoldings 시작: userId={}, traceId={}, accountId={}",
-        userId,
+        "[BaasStockAccountService] getHoldings 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
         traceId,
         accountId);
 
     ApiResponse<BaasStockHoldingListResponse> response =
-        stockCoreClient.getHoldings(userId, traceId, accountId);
+        stockCoreClient.getHoldings(xUserId, traceId, accountId);
 
     log.info(
         "[BaasStockAccountService] stock-server getHoldings 완료: accountId={}, count={}",
@@ -69,7 +73,6 @@ public class BaasStockAccountService {
   }
 
   public ApiResponse<PageResponse<BaasStockExecutionResponse>> getExecutions(
-      Long userId,
       String traceId,
       Long accountId,
       String stockCode,
@@ -77,15 +80,16 @@ public class BaasStockAccountService {
       String toDate,
       Integer page,
       Integer size) {
+    Long xUserId = userResolver.resolveByAccount(accountId, "STOCK");
     log.info(
-        "[BaasStockAccountService] getExecutions 시작: userId={}, traceId={}, accountId={}",
-        userId,
+        "[BaasStockAccountService] getExecutions 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
         traceId,
         accountId);
 
     ApiResponse<PageResponse<BaasStockExecutionResponse>> response =
         stockCoreClient.getExecutions(
-            userId, traceId, accountId, stockCode, fromDate, toDate, page, size);
+            xUserId, traceId, accountId, stockCode, fromDate, toDate, page, size);
 
     log.info(
         "[BaasStockAccountService] stock-server getExecutions 완료: accountId={}, totalElements={}",
@@ -95,16 +99,16 @@ public class BaasStockAccountService {
     return ApiResponse.success(response.getData(), traceId);
   }
 
-  public ApiResponse<BaasStockReturnResponse> getReturns(
-      Long userId, String traceId, Long accountId) {
+  public ApiResponse<BaasStockReturnResponse> getReturns(String traceId, Long accountId) {
+    Long xUserId = userResolver.resolveByAccount(accountId, "STOCK");
     log.info(
-        "[BaasStockAccountService] getReturns 시작: userId={}, traceId={}, accountId={}",
-        userId,
+        "[BaasStockAccountService] getReturns 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
         traceId,
         accountId);
 
     ApiResponse<BaasStockReturnResponse> response =
-        stockCoreClient.getReturns(userId, traceId, accountId);
+        stockCoreClient.getReturns(xUserId, traceId, accountId);
 
     log.info("[BaasStockAccountService] stock-server getReturns 완료: accountId={}", accountId);
 

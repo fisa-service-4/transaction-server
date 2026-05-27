@@ -39,24 +39,21 @@ public class BaasStockOrderController {
   @PostMapping("/accounts/{accountId}/orders")
   @ResponseStatus(HttpStatus.CREATED)
   public ApiResponse<BaasStockOrderCreateResponse> createOrder(
-      @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("Idempotency-Key") String idempotencyKey,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
       @PathVariable Long accountId,
       @Valid @RequestBody BaasStockOrderRequest request,
       HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasStockOrderController] POST /baas/v1/stock/accounts/{}/orders 요청: userId={}, traceId={}, idempotencyKey={}",
+        "[BaasStockOrderController] POST /baas/v1/stock/accounts/{}/orders 요청: traceId={}, idempotencyKey={}",
         accountId,
-        userId,
         traceId,
         idempotencyKey);
 
     ApiResponse<BaasStockOrderCreateResponse> response =
-        baasStockOrderService.createOrder(userId, traceId, idempotencyKey, accountId, request);
+        baasStockOrderService.createOrder(traceId, idempotencyKey, accountId, request);
 
     log.info(
         "[BaasStockOrderController] POST /baas/v1/stock/accounts/{}/orders 완료: orderId={}, traceId={}",
@@ -70,23 +67,20 @@ public class BaasStockOrderController {
   @Operation(summary = "주문 취소")
   @PostMapping("/orders/{orderId}/cancel")
   public ApiResponse<BaasStockOrderCancelResponse> cancelOrder(
-      @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("Idempotency-Key") String idempotencyKey,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
       @PathVariable Long orderId,
       HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasStockOrderController] POST /baas/v1/stock/orders/{}/cancel 요청: userId={}, traceId={}, idempotencyKey={}",
+        "[BaasStockOrderController] POST /baas/v1/stock/orders/{}/cancel 요청: traceId={}, idempotencyKey={}",
         orderId,
-        userId,
         traceId,
         idempotencyKey);
 
     ApiResponse<BaasStockOrderCancelResponse> response =
-        baasStockOrderService.cancelOrder(userId, traceId, idempotencyKey, orderId);
+        baasStockOrderService.cancelOrder(traceId, idempotencyKey, orderId);
 
     log.info(
         "[BaasStockOrderController] POST /baas/v1/stock/orders/{}/cancel 완료: traceId={}",
@@ -99,25 +93,22 @@ public class BaasStockOrderController {
   @Operation(summary = "주문 목록 조회")
   @GetMapping("/accounts/{accountId}/orders")
   public ApiResponse<PageResponse<BaasStockOrderItemResponse>> getOrders(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
       @PathVariable Long accountId,
       @RequestParam(required = false) String status,
       @RequestParam(required = false) String orderType,
       @RequestParam(required = false) Integer page,
       @RequestParam(required = false) Integer size,
       HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasStockOrderController] GET /baas/v1/stock/accounts/{}/orders 요청: userId={}, traceId={}",
+        "[BaasStockOrderController] GET /baas/v1/stock/accounts/{}/orders 요청: traceId={}",
         accountId,
-        userId,
         traceId);
 
     ApiResponse<PageResponse<BaasStockOrderItemResponse>> response =
-        baasStockOrderService.getOrders(userId, traceId, accountId, status, orderType, page, size);
+        baasStockOrderService.getOrders(traceId, accountId, status, orderType, page, size);
 
     log.info(
         "[BaasStockOrderController] GET /baas/v1/stock/accounts/{}/orders 완료: traceId={}",
@@ -130,21 +121,15 @@ public class BaasStockOrderController {
   @Operation(summary = "주문 상세 조회")
   @GetMapping("/orders/{orderId}")
   public ApiResponse<BaasStockOrderDetailResponse> getOrderDetail(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader(value = "X-Trace-Id", required = false) String xTraceId,
-      @PathVariable Long orderId,
-      HttpServletRequest httpRequest) {
-    String traceId = resolveTraceId(xTraceId);
+      @PathVariable Long orderId, HttpServletRequest httpRequest) {
+    String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasStockOrderController] GET /baas/v1/stock/orders/{} 요청: userId={}, traceId={}",
-        orderId,
-        userId,
-        traceId);
+        "[BaasStockOrderController] GET /baas/v1/stock/orders/{} 요청: traceId={}", orderId, traceId);
 
     ApiResponse<BaasStockOrderDetailResponse> response =
-        baasStockOrderService.getOrderDetail(userId, traceId, orderId);
+        baasStockOrderService.getOrderDetail(traceId, orderId);
 
     log.info(
         "[BaasStockOrderController] GET /baas/v1/stock/orders/{} 완료: traceId={}", orderId, traceId);
@@ -152,7 +137,7 @@ public class BaasStockOrderController {
     return response;
   }
 
-  private String resolveTraceId(String xTraceId) {
-    return (xTraceId != null && !xTraceId.isBlank()) ? xTraceId : UUID.randomUUID().toString();
+  private String generateTraceId() {
+    return UUID.randomUUID().toString();
   }
 }
