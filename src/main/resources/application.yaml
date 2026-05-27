@@ -21,3 +21,5 @@ spring:
 core:
   bank:
     url: ${BANK_SERVER_URL:http://bank-server:8080}
+  stock:
+    url: ${STOCK_SERVER_URL:http://stock-server:8082}

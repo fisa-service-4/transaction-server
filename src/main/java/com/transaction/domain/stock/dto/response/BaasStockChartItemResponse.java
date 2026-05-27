@@ -1,0 +1,19 @@
+package com.transaction.domain.stock.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.math.BigDecimal;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class BaasStockChartItemResponse {
+
+  private String date;
+  private BigDecimal open;
+  private BigDecimal high;
+  private BigDecimal low;
+  private BigDecimal close;
+  private Long volume;
+}
