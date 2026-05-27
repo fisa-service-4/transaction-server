@@ -46,7 +46,7 @@ public class BaasTransferService {
   }
 
   public ApiResponse<BaasTransferApproveResponse> approveTransfer(
-      String traceId, String idempotencyKey, Long transferId) {
+      String traceId, Long transferId) {
     Long xUserId = userResolver.resolveByTransferId(transferId);
     log.info(
         "[BaasTransferService] approveTransfer 시작: xUserId={}, traceId={}, transferId={}",
@@ -55,7 +55,7 @@ public class BaasTransferService {
         transferId);
 
     ApiResponse<BaasTransferApproveResponse> response =
-        bankCoreClient.approveTransfer(xUserId, traceId, idempotencyKey, transferId);
+        bankCoreClient.approveTransfer(xUserId, traceId, transferId);
 
     log.info(
         "[BaasTransferService] bank-server approveTransfer 완료: transferId={}, status={}",

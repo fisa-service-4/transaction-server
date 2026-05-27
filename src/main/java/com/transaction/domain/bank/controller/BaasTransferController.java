@@ -61,20 +61,17 @@ public class BaasTransferController {
   @Operation(summary = "이체 승인")
   @PostMapping("/{transferId}/approve")
   public ApiResponse<BaasTransferApproveResponse> approveTransfer(
-      @RequestHeader("Idempotency-Key") String idempotencyKey,
-      @PathVariable Long transferId,
-      HttpServletRequest httpRequest) {
+      @PathVariable Long transferId, HttpServletRequest httpRequest) {
     String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info(
-        "[BaasTransferController] POST /baas/v1/bank/transfers/{}/approve 요청: traceId={}, idempotencyKey={}",
+        "[BaasTransferController] POST /baas/v1/bank/transfers/{}/approve 요청: traceId={}",
         transferId,
-        traceId,
-        idempotencyKey);
+        traceId);
 
     ApiResponse<BaasTransferApproveResponse> response =
-        baasTransferService.approveTransfer(traceId, idempotencyKey, transferId);
+        baasTransferService.approveTransfer(traceId, transferId);
 
     log.info(
         "[BaasTransferController] POST /baas/v1/bank/transfers/{}/approve 완료: traceId={}",
