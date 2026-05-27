@@ -2,6 +2,7 @@ package com.transaction.global.exception;
 
 import com.transaction.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,5 +24,13 @@ public class GlobalExceptionHandler {
     String traceId = (String) request.getAttribute("traceId");
     return ResponseEntity.status(e.getStatus())
         .body(ApiResponse.fail(e.getCode(), e.getMessage(), traceId));
+  }
+
+  @ExceptionHandler(UserMappingNotFoundException.class)
+  public ResponseEntity<ApiResponse<Void>> handleUserMappingNotFoundException(
+      UserMappingNotFoundException e, HttpServletRequest request) {
+    String traceId = (String) request.getAttribute("traceId");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(ApiResponse.fail("MAPPING_001", e.getMessage(), traceId));
   }
 }
