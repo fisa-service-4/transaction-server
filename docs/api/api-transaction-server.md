@@ -1,4 +1,4 @@
-# 2. BaaS API Body 명세
+# transaction-server API 명세
 
 > **Base URL:** `/baas/v1`
 > **Port:** 8083
@@ -31,13 +31,13 @@
 
 ## Query Parameter Naming 규칙
 
-| 목적     | 이름        |
-| ------ | --------- |
-| 시작일    | fromDate  |
-| 종료일    | toDate    |
-| 최소 금액  | minAmount |
-| 최대 금액  | maxAmount |
-| 페이지    | page      |
+| 목적        | 이름      |
+| ----------- | --------- |
+| 시작일      | fromDate  |
+| 종료일      | toDate    |
+| 최소 금액   | minAmount |
+| 최대 금액   | maxAmount |
+| 페이지      | page      |
 | 페이지 크기 | size      |
 
 ---
@@ -94,11 +94,9 @@
 
 ## 공통 헤더
 
-| 헤더              | 설명                     | 필수           |
-| --------------- | ---------------------- | ------------ |
-| Authorization   | Bearer {accessToken}   | O            |
-| Pin-Token       | {pinToken}             | 금융 거래 API 전용 |
-| Idempotency-Key | {uuid}                 | 이체/주문 API 전용 |
+| 헤더            | 설명   | 필수               |
+| --------------- | ------ | ------------------ |
+| Idempotency-Key | {uuid} | 이체/주문 API 전용 |
 
 ---
 
@@ -143,9 +141,9 @@
 
 ### Query Parameters
 
-| 이름     | 타입     | 필수 | 설명                                 |
-| ------ | ------ | -- | ---------------------------------- |
-| status | String | X  | ACTIVE / DORMANT / LOCKED / CLOSED |
+| 이름   | 타입   | 필수 | 설명                               |
+| ------ | ------ | ---- | ---------------------------------- |
+| status | String | X    | ACTIVE / DORMANT / LOCKED / CLOSED |
 
 ### Response `200 OK`
 
@@ -200,20 +198,40 @@
 }
 ```
 
+## BANK-ACCOUNT-003. 계좌 잔액 조회
+
+**GET** `/accounts/{accountId}/balance`
+
+### Response `200 OK`
+
+```json id="vr3zgd"
+{
+  "success": true,
+  "data": {
+    "accountId": 1001,
+    "balance": 3500000,
+    "updatedAt": "2026-05-18T10:15:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
 ---
 
-## BANK-ACCOUNT-003. 거래내역 조회
+## BANK-ACCOUNT-004. 거래내역 조회
 
 **GET** `/bank/accounts/{accountId}/transactions`
 
 ### Query Parameters
 
-| 이름       | 타입      | 필수 | 설명                  |
-| -------- | ------- | -- | ------------------- |
-| fromDate | Date    | X  | 조회 시작일 (YYYY-MM-DD) |
-| toDate   | Date    | X  | 조회 종료일 (YYYY-MM-DD) |
-| page     | Integer | X  | 페이지 번호 (기본값: 0)     |
-| size     | Integer | X  | 페이지 크기 (기본값: 20)    |
+| 이름     | 타입    | 필수 | 설명                     |
+| -------- | ------- | ---- | ------------------------ |
+| fromDate | Date    | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate   | Date    | X    | 조회 종료일 (YYYY-MM-DD) |
+| page     | Integer | X    | 페이지 번호 (기본값: 0)  |
+| size     | Integer | X    | 페이지 크기 (기본값: 20) |
 
 ### Response `200 OK`
 
@@ -246,23 +264,23 @@
 
 ---
 
-## BANK-ACCOUNT-004. 거래 필터 조회
+## BANK-ACCOUNT-005. 거래 필터 조회
 
 **GET** `/bank/accounts/{accountId}/transactions/filter`
 
 ### Query Parameters
 
-| 이름        | 타입      | 필수 | 설명                                                              |
-| --------- | ------- | -- | --------------------------------------------------------------- |
-| type      | String  | X  | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
-| channel   | String  | X  | APP / AI_AGENT                                                  |
-| status    | String  | X  | SUCCESS / FAILED / CANCELLED                                    |
-| fromDate  | Date    | X  | 조회 시작일 (YYYY-MM-DD)                                             |
-| toDate    | Date    | X  | 조회 종료일 (YYYY-MM-DD)                                             |
-| minAmount | Decimal | X  | 최소 거래 금액                                                        |
-| maxAmount | Decimal | X  | 최대 거래 금액                                                        |
-| page      | Integer | X  | 페이지 번호 (기본값: 0)                                                 |
-| size      | Integer | X  | 페이지 크기 (기본값: 20)                                                |
+| 이름      | 타입    | 필수 | 설명                                                            |
+| --------- | ------- | ---- | --------------------------------------------------------------- |
+| type      | String  | X    | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
+| channel   | String  | X    | APP / AI_AGENT                                                  |
+| status    | String  | X    | SUCCESS / FAILED / CANCELLED                                    |
+| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD)                                        |
+| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD)                                        |
+| minAmount | Decimal | X    | 최소 거래 금액                                                  |
+| maxAmount | Decimal | X    | 최대 거래 금액                                                  |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)                                         |
+| size      | Integer | X    | 페이지 크기 (기본값: 20)                                        |
 
 ### Response `200 OK`
 
@@ -295,16 +313,16 @@
 
 ---
 
-## BANK-ACCOUNT-005. 거래 카테고리 조회
+## BANK-ACCOUNT-006. 거래 카테고리 조회
 
 **GET** `/bank/accounts/{accountId}/transactions/categories`
 
 ### Query Parameters
 
-| 이름       | 타입   | 필수 | 설명                  |
-| -------- | ---- | -- | ------------------- |
-| fromDate | Date | O  | 집계 시작일 (YYYY-MM-DD) |
-| toDate   | Date | O  | 집계 종료일 (YYYY-MM-DD) |
+| 이름     | 타입 | 필수 | 설명                     |
+| -------- | ---- | ---- | ------------------------ |
+| fromDate | Date | O    | 집계 시작일 (YYYY-MM-DD) |
+| toDate   | Date | O    | 집계 종료일 (YYYY-MM-DD) |
 
 ### Response `200 OK`
 
@@ -336,8 +354,6 @@
 }
 ```
 
-
-
 ## BANK-TRANSFER-001. 이체 실행
 
 **POST** `/bank/transfers`
@@ -357,13 +373,13 @@
 }
 ```
 
-| 필드              | 타입      | 필수 | 설명           |
-| --------------- | ------- | -- | ------------ |
-| fromAccountId   | Long    | O  | 출금 계좌 ID     |
-| toBankCode      | String  | O  | 입금 은행 코드     |
-| toAccountNumber | String  | O  | 입금 계좌번호      |
-| transferAmount  | Decimal | O  | 이체 금액 (0 초과) |
-| requestedBy     | String  | O  | USER / AI    |
+| 필드            | 타입    | 필수 | 설명               |
+| --------------- | ------- | ---- | ------------------ |
+| fromAccountId   | Long    | O    | 출금 계좌 ID       |
+| toBankCode      | String  | O    | 입금 은행 코드     |
+| toAccountNumber | String  | O    | 입금 계좌번호      |
+| transferAmount  | Decimal | O    | 이체 금액 (0 초과) |
+| requestedBy     | String  | O    | USER / AI          |
 
 ### Response `201 Created`
 
@@ -383,11 +399,11 @@
 
 ### Error Cases
 
-| 상황       | 코드           | 메시지             |
-| -------- | ------------ | --------------- |
-| 잔액 부족    | TRANSFER_002 | 잔액이 부족합니다       |
+| 상황           | 코드         | 메시지                        |
+| -------------- | ------------ | ----------------------------- |
+| 잔액 부족      | TRANSFER_002 | 잔액이 부족합니다             |
 | 계좌 이상 상태 | ACCOUNT_003  | 계좌 상태가 유효하지 않습니다 |
-| 접근 불가    | ACCOUNT_002  | 본인 계좌가 아닙니다     |
+| 접근 불가      | ACCOUNT_002  | 본인 계좌가 아닙니다          |
 
 ---
 
@@ -416,10 +432,10 @@
 
 ### Error Cases
 
-| 상황      | 코드           | 메시지               |
-| ------- | ------------ | ----------------- |
+| 상황         | 코드         | 메시지                          |
+| ------------ | ------------ | ------------------------------- |
 | 이체 건 없음 | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
-| 중복 승인   | TRANSFER_003 | 이미 처리 완료된 이체입니다   |
+| 중복 승인    | TRANSFER_003 | 이미 처리 완료된 이체입니다     |
 
 ---
 
@@ -451,10 +467,10 @@
 
 ### Error Cases
 
-| 상황      | 코드           | 메시지               |
-| ------- | ------------ | ----------------- |
+| 상황         | 코드         | 메시지                          |
+| ------------ | ------------ | ------------------------------- |
 | 이체 건 없음 | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
-| 접근 불가   | TRANSFER_004 | 본인 이체 건이 아닙니다     |
+| 접근 불가    | TRANSFER_004 | 본인 이체 건이 아닙니다         |
 
 ---
 
@@ -468,9 +484,9 @@
 
 ### Query Parameters
 
-| 이름      | 타입     | 필수 | 설명          |
-| ------- | ------ | -- | ----------- |
-| keyword | String | O  | 종목명 또는 종목코드 |
+| 이름    | 타입   | 필수 | 설명                 |
+| ------- | ------ | ---- | -------------------- |
+| keyword | String | O    | 종목명 또는 종목코드 |
 
 ### Response `200 OK`
 
@@ -526,11 +542,11 @@
 
 ### Query Parameters
 
-| 이름       | 타입     | 필수 | 설명                       |
-| -------- | ------ | -- | ------------------------ |
-| interval | String | O  | DAILY / WEEKLY / MONTHLY |
-| fromDate | Date   | X  | 조회 시작일 (YYYY-MM-DD)      |
-| toDate   | Date   | X  | 조회 종료일 (YYYY-MM-DD)      |
+| 이름     | 타입   | 필수 | 설명                     |
+| -------- | ------ | ---- | ------------------------ |
+| interval | String | O    | DAILY / WEEKLY / MONTHLY |
+| fromDate | Date   | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate   | Date   | X    | 조회 종료일 (YYYY-MM-DD) |
 
 ### Response `200 OK`
 
@@ -628,13 +644,13 @@
 
 ### Request Fields
 
-| 필드          | 타입      | 필수 | 설명                              |
-| ----------- | ------- | -- | ------------------------------- |
-| stockCode   | String  | O  | 종목 코드                           |
-| orderType   | String  | O  | BUY / SELL                      |
-| orderMethod | String  | O  | MARKET / LIMIT                  |
-| quantity    | Integer | O  | 주문 수량                           |
-| price       | Integer | X  | 주문 가격 (LIMIT 시 필수, MARKET 시 null) |
+| 필드        | 타입    | 필수 | 설명                                      |
+| ----------- | ------- | ---- | ----------------------------------------- |
+| stockCode   | String  | O    | 종목 코드                                 |
+| orderType   | String  | O    | BUY / SELL                                |
+| orderMethod | String  | O    | MARKET / LIMIT                            |
+| quantity    | Integer | O    | 주문 수량                                 |
+| price       | Integer | X    | 주문 가격 (LIMIT 시 필수, MARKET 시 null) |
 
 ### Response `201 Created`
 
@@ -661,10 +677,10 @@
 
 ### Error Cases
 
-| 상황          | 코드        | 메시지           |
-| ----------- | --------- | ------------- |
+| 상황                | 코드      | 메시지                      |
+| ------------------- | --------- | --------------------------- |
 | 주문 가능 금액 부족 | ORDER_001 | 주문 가능 금액이 부족합니다 |
-| 보유 수량 부족    | ORDER_002 | 보유 수량이 부족합니다   |
+| 보유 수량 부족      | ORDER_002 | 보유 수량이 부족합니다      |
 
 ---
 
@@ -703,12 +719,12 @@
 
 ### Query Parameters
 
-| 이름        | 타입      | 필수 | 설명                                                          |
-| --------- | ------- | -- | ----------------------------------------------------------- |
-| status    | String  | X  | REQUESTED / PARTIAL_FILLED / FILLED / CANCELLED / FAILED    |
-| orderType | String  | X  | BUY / SELL                                                  |
-| page      | Integer | X  | 페이지 번호 (기본값: 0)                                             |
-| size      | Integer | X  | 페이지 크기 (기본값: 20)                                            |
+| 이름      | 타입    | 필수 | 설명                                                     |
+| --------- | ------- | ---- | -------------------------------------------------------- |
+| status    | String  | X    | REQUESTED / PARTIAL_FILLED / FILLED / CANCELLED / FAILED |
+| orderType | String  | X    | BUY / SELL                                               |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)                                  |
+| size      | Integer | X    | 페이지 크기 (기본값: 20)                                 |
 
 ### Response `200 OK`
 
@@ -783,13 +799,13 @@
 
 ### Query Parameters
 
-| 이름        | 타입      | 필수 | 설명                  |
-| --------- | ------- | -- | ------------------- |
-| stockCode | String  | X  | 종목 코드               |
-| fromDate  | Date    | X  | 조회 시작일 (YYYY-MM-DD) |
-| toDate    | Date    | X  | 조회 종료일 (YYYY-MM-DD) |
-| page      | Integer | X  | 페이지 번호 (기본값: 0)     |
-| size      | Integer | X  | 페이지 크기 (기본값: 20)    |
+| 이름      | 타입    | 필수 | 설명                     |
+| --------- | ------- | ---- | ------------------------ |
+| stockCode | String  | X    | 종목 코드                |
+| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD) |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)  |
+| size      | Integer | X    | 페이지 크기 (기본값: 20) |
 
 ### Response `200 OK`
 
@@ -843,7 +859,6 @@
 }
 ```
 
-
 ## STOCK-HOLDING-001. 보유 종목 조회
 
 **GET** `/stock/accounts/{accountId}/holdings`
@@ -873,7 +888,6 @@
 }
 ```
 
-
 ---
 
 # COMMON API
@@ -886,9 +900,9 @@
 
 ### Query Parameters
 
-| 이름        | 타입   | 필수 | 설명        |
-| --------- | ---- | -- | --------- |
-| accountId | Long | O  | 증권 계좌 ID  |
+| 이름      | 타입 | 필수 | 설명         |
+| --------- | ---- | ---- | ------------ |
+| accountId | Long | O    | 증권 계좌 ID |
 
 ### Response `200 OK`
 
