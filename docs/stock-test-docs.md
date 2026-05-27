@@ -1,20 +1,20 @@
-# Stock & Bank BaaS API 테스트 문서
+# Stock API 테스트 문서
 
 > **Transaction Server** `localhost:8083`
-> 모든 요청은 transaction-server → bank-server(8081) / stock-server(8082) 로 OpenFeign 프록시됩니다.
+> 모든 요청은 transaction-server → stock-server(8082) 로 OpenFeign 프록시됩니다.
 
 ---
 
 ## 테스트 사전 조건
+
+- git bash에 winget install jqlang.jq 설치
+- jq 사용하지 않고 테스트
 
 ### 필수 서비스 실행 확인
 
 ```bash
 # transaction-server 헬스 체크
 curl -s http://localhost:8083/actuator/health
-
-# bank-server 헬스 체크
-curl -s http://localhost:8081/internal/v1/bank/health
 
 # stock-server 헬스 체크
 curl -s http://localhost:8082/internal/v1/stock/health
@@ -24,23 +24,13 @@ curl -s http://localhost:8082/internal/v1/stock/health
 
 ## 공통 테스트 데이터
 
-> bank-server / stock-server DB에 아래 값이 seeding 되어 있다고 가정합니다.
+> stock-server DB에 아래 값이 seeding 되어 있다고 가정합니다.
 
 ### 사용자
 
 | 항목 | 값 |
 |---|---|
 | userId | `1` |
-
-### 은행 계좌 (bank-server DB)
-
-| 항목 | 값 |
-|---|---|
-| accountId | `1001` |
-| accountNumber | `110-123-456789` |
-| bankCode | `088` (신한은행) |
-| balance | `3,500,000` |
-| accountStatus | `ACTIVE` |
 
 ### 증권 계좌 (stock-server DB)
 
@@ -74,167 +64,6 @@ curl -s http://localhost:8082/internal/v1/stock/health
 | `X-User-Id` | 사용자 ID (필수) | `1` |
 | `X-Trace-Id` | 요청 추적 ID (선택, 없으면 자동 생성) | `test-trace-001` |
 | `Idempotency-Key` | 중복 방지 키 (Write API 필수) | `$(uuidgen)` |
-
----
-
----
-
-# BANK API
-
----
-
-## BANK-ACCOUNT-001. 계좌 목록 조회
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
-**status 필터 사용:**
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts?status=ACTIVE" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
----
-
-## BANK-ACCOUNT-002. 계좌 상세 조회
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
-**에러 케이스 — 존재하지 않는 계좌:**
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/9999" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
----
-
-## BANK-ACCOUNT-003. 거래내역 조회
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
-**날짜 범위 + 페이지네이션:**
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?fromDate=2026-05-01&toDate=2026-05-31&page=0&size=10" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
----
-
-## BANK-ACCOUNT-004. 거래내역 필터 조회
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?type=DEPOSIT&status=SUCCESS" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
-**금액 범위 필터:**
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?minAmount=100000&maxAmount=5000000&channel=APP" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
-**출금 내역만:**
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?type=WITHDRAW&fromDate=2026-05-01&toDate=2026-05-31" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
----
-
-## BANK-ACCOUNT-005. 거래 카테고리 조회
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/categories?fromDate=2026-05-01&toDate=2026-05-31" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
----
-
-## BANK-TRANSFER-001. 이체 실행
-
-```bash
-curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fromAccountId": 1001,
-    "toBankCode": "020",
-    "toAccountNumber": "301-0987-1234",
-    "transferAmount": 100000,
-    "requestedBy": "USER"
-  }' | jq .
-```
-
-**에러 케이스 — 잔액 부족:**
-
-```bash
-curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fromAccountId": 1001,
-    "toBankCode": "020",
-    "toAccountNumber": "301-0987-1234",
-    "transferAmount": 99999999,
-    "requestedBy": "USER"
-  }' | jq .
-```
-
----
-
-## BANK-TRANSFER-002. 이체 승인
-
-> `transferId`는 BANK-TRANSFER-001 응답에서 확인
-
-```bash
-TRANSFER_ID=5001
-
-curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers/${TRANSFER_ID}/approve" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" \
-  -H "Idempotency-Key: $(uuidgen)" | jq .
-```
-
----
-
-## BANK-TRANSFER-003. 이체 결과 조회
-
-```bash
-TRANSFER_ID=5001
-
-curl -s -X GET "http://localhost:8083/baas/v1/bank/transfers/${TRANSFER_ID}" \
-  -H "X-User-Id: 1" \
-  -H "X-Trace-Id: test-trace-001" | jq .
-```
-
----
 
 ---
 
