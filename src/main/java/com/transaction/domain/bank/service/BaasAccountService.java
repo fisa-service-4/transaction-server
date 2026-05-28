@@ -52,12 +52,7 @@ public class BaasAccountService {
   }
 
   public ApiResponse<PageResponse<BaasTransactionResponse>> getTransactions(
-      String traceId,
-      Long accountId,
-      String fromDate,
-      String toDate,
-      Integer page,
-      Integer size) {
+      String traceId, Long accountId, String fromDate, String toDate, Integer page, Integer size) {
     Long xUserId = userResolver.resolveByAccount(accountId, "BANK");
     log.info(
         "[BaasAccountService] getTransactions 시작: xUserId={}, traceId={}, accountId={}",

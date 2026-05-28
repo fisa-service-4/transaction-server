@@ -36,18 +36,14 @@ public class UserResolver {
     return transferUserMappingRepository
         .findById(transferId)
         .orElseThrow(
-            () ->
-                new UserMappingNotFoundException(
-                    "이체 매핑을 찾을 수 없습니다. transferId=" + transferId))
+            () -> new UserMappingNotFoundException("이체 매핑을 찾을 수 없습니다. transferId=" + transferId))
         .getXUserId();
   }
 
   public Long resolveByOrderId(Long orderId) {
     return orderUserMappingRepository
         .findById(orderId)
-        .orElseThrow(
-            () ->
-                new UserMappingNotFoundException("주문 매핑을 찾을 수 없습니다. orderId=" + orderId))
+        .orElseThrow(() -> new UserMappingNotFoundException("주문 매핑을 찾을 수 없습니다. orderId=" + orderId))
         .getXUserId();
   }
 
@@ -58,10 +54,7 @@ public class UserResolver {
   public Long resolveByFirebaseUid(String firebaseUid) {
     return userMasterRepository
         .findByFirebaseUid(firebaseUid)
-        .orElseThrow(
-            () ->
-                new UserNotFoundException(
-                    "사용자를 찾을 수 없습니다. firebaseUid=" + firebaseUid))
+        .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다. firebaseUid=" + firebaseUid))
         .getXUserId();
   }
 }

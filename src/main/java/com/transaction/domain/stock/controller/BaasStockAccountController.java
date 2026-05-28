@@ -112,7 +112,8 @@ public class BaasStockAccountController {
         traceId);
 
     ApiResponse<PageResponse<BaasStockExecutionResponse>> response =
-        baasStockAccountService.getExecutions(traceId, accountId, stockCode, fromDate, toDate, page, size);
+        baasStockAccountService.getExecutions(
+            traceId, accountId, stockCode, fromDate, toDate, page, size);
 
     log.info(
         "[BaasStockAccountController] GET /baas/v1/stock/accounts/{}/executions 완료: traceId={}",

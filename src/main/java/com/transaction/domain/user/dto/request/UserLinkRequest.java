@@ -8,12 +8,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class UserLinkRequest {
 
-  @NotBlank
-  private String firebaseUid;
+  @NotBlank private String firebaseUid;
 
-  @NotBlank
-  private String name;
+  @NotBlank private String name;
 
-  @NotBlank
-  private String phoneNumber;
+  @NotBlank private String phoneNumber;
 }

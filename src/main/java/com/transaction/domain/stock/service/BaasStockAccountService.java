@@ -37,8 +37,7 @@ public class BaasStockAccountService {
     return ApiResponse.success(response.getData(), traceId);
   }
 
-  public ApiResponse<BaasStockCashBalanceResponse> getCashBalance(
-      String traceId, Long accountId) {
+  public ApiResponse<BaasStockCashBalanceResponse> getCashBalance(String traceId, Long accountId) {
     Long xUserId = userResolver.resolveByAccount(accountId, "STOCK");
     log.info(
         "[BaasStockAccountService] getCashBalance 시작: xUserId={}, traceId={}, accountId={}",
