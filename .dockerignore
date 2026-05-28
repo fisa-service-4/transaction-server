@@ -1,5 +1,7 @@
 .git
 .gradle
-build
+build/*
+!build/libs/
+!build/libs/*.jar
 .idea
 .vscode

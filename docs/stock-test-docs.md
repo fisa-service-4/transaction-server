@@ -99,7 +99,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/user/link" \
   -H "Content-Type: application/json" \
   -d '{
     "firebaseUid": "firebase-test-uid-001",
-    "name": "홍길동",
+    "name": "GilDong",
     "phoneNumber": "01012341234"
   }' | jq .
 ```
@@ -111,7 +111,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/user/link" \
   -H "Content-Type: application/json" \
   -d '{
     "firebaseUid": "firebase-unknown",
-    "name": "없는사람",
+    "name": "NoMember",
     "phoneNumber": "01099999999"
   }' | jq .
 ```
