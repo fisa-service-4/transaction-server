@@ -46,20 +46,29 @@
 | transferId | *(이체 실행 후 응답에서 확인)* |
 | orderId | *(주문 생성 후 응답에서 확인)* |
 
-### transaction-server DB 사전 데이터 (user_account_mapping)
+### transaction-server DB 사전 데이터
 
-> transaction-server가 accountId → x_user_id 를 조회하려면 아래 데이터가 필요합니다.
+> data.sql로 자동 seeding됩니다. 수동으로 넣어야 할 경우 아래 참고.
+
+**user_master** (firebase UID → x_user_id 매핑)
+
+```sql
+MERGE INTO user_master t
+USING (SELECT 1 AS user_id, 1 AS x_user_id, '홍길동' AS user_name, '01012341234' AS phone_number FROM DUAL) s
+ON (t.user_id = s.user_id)
+WHEN NOT MATCHED THEN INSERT (user_id, x_user_id, user_name, phone_number)
+VALUES (s.user_id, s.x_user_id, s.user_name, s.phone_number);
+```
+
+**user_account_mapping** (accountId → x_user_id 매핑)
 
 ```sql
 -- 증권 계좌 매핑
-INSERT INTO user_account_mapping (account_id, account_type, user_id, x_user_id)
-VALUES (2001, 'STOCK', 1, 1)
-ON CONFLICT (account_id, account_type) DO NOTHING;
-
--- 은행 계좌 매핑 (bank API 테스트 시 필요)
-INSERT INTO user_account_mapping (account_id, account_type, user_id, x_user_id)
-VALUES (1001, 'BANK', 1, 1)
-ON CONFLICT (account_id, account_type) DO NOTHING;
+MERGE INTO user_account_mapping t
+USING (SELECT 1 AS account_id, 'STOCK' AS account_type, 1 AS user_id, 1 AS x_user_id FROM DUAL) s
+ON (t.account_id = s.account_id AND t.account_type = s.account_type)
+WHEN NOT MATCHED THEN INSERT (account_id, account_type, user_id, x_user_id)
+VALUES (s.account_id, s.account_type, s.user_id, s.x_user_id);
 ```
 
 ---
@@ -68,9 +77,44 @@ ON CONFLICT (account_id, account_type) DO NOTHING;
 
 | 헤더 | 설명 | 적용 대상 |
 |---|---|---|
+| `X-Firebase-Uid` | 사용자 식별 (firebase UID) | 사용자 단위 목록 조회 |
 | `Idempotency-Key` | 중복 방지 키 | 이체 실행 / 주문 생성 / 주문 취소 |
 
 > `X-User-Id`, `X-Trace-Id` 는 transaction-server 내부에서 자동 처리되므로 외부에서 전달하지 않습니다.
+>
+> `X-Firebase-Uid` 는 Link API로 firebase_uid가 등록된 사용자에 한해 사용 가능합니다.
+
+---
+
+# USER API
+
+---
+
+## USER-LINK-001. Firebase UID 연동
+
+> 최초 로그인 시 service-backend가 호출. name + phoneNumber로 user_master 조회 후 firebase_uid 저장.
+
+```bash
+curl -s -X POST "http://localhost:8083/baas/v1/user/link" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firebaseUid": "firebase-test-uid-001",
+    "name": "홍길동",
+    "phoneNumber": "01012341234"
+  }' | jq .
+```
+
+**에러 케이스 — 사용자 없음:**
+
+```bash
+curl -s -X POST "http://localhost:8083/baas/v1/user/link" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firebaseUid": "firebase-unknown",
+    "name": "없는사람",
+    "phoneNumber": "01099999999"
+  }' | jq .
+```
 
 ---
 
@@ -128,10 +172,13 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/005930/charts?interval=MONTH
 
 ---
 
-## STOCK-ACCOUNT-001. 주문 가능 계좌 조회 -> 현재 불가능
+## STOCK-ACCOUNT-001. 주문 가능 계좌 조회
+
+> Link API로 firebase_uid 등록 후 사용 가능합니다.
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/stock/accounts" \
+  -H "X-Firebase-Uid: firebase-test-uid-001" | jq .
 ```
 
 ---
@@ -310,6 +357,7 @@ curl -s -X GET "http://localhost:8083/baas/v1/stock/orders/${ORDER_ID}" | jq .
 
 | 코드 | 상황 | 발생 API |
 |---|---|---|
+| `USER_001` | firebase_uid에 해당하는 사용자 없음 (Link API 미완료) | 사용자 단위 목록 조회 |
 | `MAPPING_001` | accountId / transferId / orderId 에 해당하는 사용자 매핑 없음 | 전체 |
 | `ACCOUNT_001` | 계좌 없음 | bank accounts |
 | `ACCOUNT_002` | 타인 계좌 접근 | bank accounts |

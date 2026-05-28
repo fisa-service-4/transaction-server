@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,14 +33,14 @@ public class BaasStockAccountController {
   @Operation(summary = "주문 가능 계좌 조회")
   @GetMapping
   public ApiResponse<BaasStockAccountListResponse> getStockAccounts(
-      HttpServletRequest httpRequest) {
+      @RequestHeader("X-Firebase-Uid") String firebaseUid, HttpServletRequest httpRequest) {
     String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info("[BaasStockAccountController] GET /baas/v1/stock/accounts 요청: traceId={}", traceId);
 
     ApiResponse<BaasStockAccountListResponse> response =
-        baasStockAccountService.getStockAccounts(traceId);
+        baasStockAccountService.getStockAccounts(traceId, firebaseUid);
 
     log.info("[BaasStockAccountController] GET /baas/v1/stock/accounts 완료: traceId={}", traceId);
 

@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,13 +32,16 @@ public class BaasAccountController {
   @Operation(summary = "계좌 목록 조회")
   @GetMapping
   public ApiResponse<BaasAccountListResponse> getAccounts(
-      @RequestParam(required = false) String status, HttpServletRequest httpRequest) {
+      @RequestParam(required = false) String status,
+      @RequestHeader("X-Firebase-Uid") String firebaseUid,
+      HttpServletRequest httpRequest) {
     String traceId = generateTraceId();
     httpRequest.setAttribute("traceId", traceId);
 
     log.info("[BaasAccountController] GET /baas/v1/bank/accounts 요청: traceId={}", traceId);
 
-    ApiResponse<BaasAccountListResponse> response = baasAccountService.getAccounts(traceId, status);
+    ApiResponse<BaasAccountListResponse> response =
+        baasAccountService.getAccounts(traceId, status, firebaseUid);
 
     log.info("[BaasAccountController] GET /baas/v1/bank/accounts 완료: traceId={}", traceId);
 

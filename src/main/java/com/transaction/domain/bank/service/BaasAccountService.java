@@ -20,8 +20,9 @@ public class BaasAccountService {
   private final BankCoreClient bankCoreClient;
   private final UserResolver userResolver;
 
-  public ApiResponse<BaasAccountListResponse> getAccounts(String traceId, String status) {
-    Long xUserId = userResolver.systemUserId();
+  public ApiResponse<BaasAccountListResponse> getAccounts(
+      String traceId, String status, String firebaseUid) {
+    Long xUserId = userResolver.resolveByFirebaseUid(firebaseUid);
     log.info("[BaasAccountService] getAccounts 시작: xUserId={}, traceId={}", xUserId, traceId);
 
     ApiResponse<BaasAccountListResponse> response =
