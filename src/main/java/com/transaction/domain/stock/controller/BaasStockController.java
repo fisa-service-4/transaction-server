@@ -35,8 +35,7 @@ public class BaasStockController {
 
     log.info("[BaasStockController] GET /baas/v1/stock/search 요청: traceId={}", traceId);
 
-    ApiResponse<BaasStockSearchResponse> response =
-        baasStockService.searchStocks(traceId, keyword);
+    ApiResponse<BaasStockSearchResponse> response = baasStockService.searchStocks(traceId, keyword);
 
     log.info("[BaasStockController] GET /baas/v1/stock/search 완료: traceId={}", traceId);
 

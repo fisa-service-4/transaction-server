@@ -20,8 +20,9 @@ public class BaasAccountService {
   private final BankCoreClient bankCoreClient;
   private final UserResolver userResolver;
 
-  public ApiResponse<BaasAccountListResponse> getAccounts(String traceId, String status) {
-    Long xUserId = userResolver.systemUserId();
+  public ApiResponse<BaasAccountListResponse> getAccounts(
+      String traceId, String status, String firebaseUid) {
+    Long xUserId = userResolver.resolveByFirebaseUid(firebaseUid);
     log.info("[BaasAccountService] getAccounts 시작: xUserId={}, traceId={}", xUserId, traceId);
 
     ApiResponse<BaasAccountListResponse> response =
@@ -51,12 +52,7 @@ public class BaasAccountService {
   }
 
   public ApiResponse<PageResponse<BaasTransactionResponse>> getTransactions(
-      String traceId,
-      Long accountId,
-      String fromDate,
-      String toDate,
-      Integer page,
-      Integer size) {
+      String traceId, Long accountId, String fromDate, String toDate, Integer page, Integer size) {
     Long xUserId = userResolver.resolveByAccount(accountId, "BANK");
     log.info(
         "[BaasAccountService] getTransactions 시작: xUserId={}, traceId={}, accountId={}",

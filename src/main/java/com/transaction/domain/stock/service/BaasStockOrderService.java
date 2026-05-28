@@ -62,12 +62,7 @@ public class BaasStockOrderService {
   }
 
   public ApiResponse<PageResponse<BaasStockOrderItemResponse>> getOrders(
-      String traceId,
-      Long accountId,
-      String status,
-      String orderType,
-      Integer page,
-      Integer size) {
+      String traceId, Long accountId, String status, String orderType, Integer page, Integer size) {
     Long xUserId = userResolver.resolveByAccount(accountId, "STOCK");
     log.info(
         "[BaasStockOrderService] getOrders 시작: xUserId={}, traceId={}, accountId={}",
@@ -86,8 +81,7 @@ public class BaasStockOrderService {
     return ApiResponse.success(response.getData(), traceId);
   }
 
-  public ApiResponse<BaasStockOrderDetailResponse> getOrderDetail(
-      String traceId, Long orderId) {
+  public ApiResponse<BaasStockOrderDetailResponse> getOrderDetail(String traceId, Long orderId) {
     Long xUserId = userResolver.resolveByOrderId(orderId);
     log.info(
         "[BaasStockOrderService] getOrderDetail 시작: xUserId={}, traceId={}, orderId={}",

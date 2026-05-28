@@ -45,8 +45,7 @@ public class BaasTransferService {
     return ApiResponse.success(response.getData(), traceId);
   }
 
-  public ApiResponse<BaasTransferApproveResponse> approveTransfer(
-      String traceId, Long transferId) {
+  public ApiResponse<BaasTransferApproveResponse> approveTransfer(String traceId, Long transferId) {
     Long xUserId = userResolver.resolveByTransferId(transferId);
     log.info(
         "[BaasTransferService] approveTransfer 시작: xUserId={}, traceId={}, transferId={}",

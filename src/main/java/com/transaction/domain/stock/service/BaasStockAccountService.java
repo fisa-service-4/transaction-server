@@ -21,8 +21,9 @@ public class BaasStockAccountService {
   private final StockCoreClient stockCoreClient;
   private final UserResolver userResolver;
 
-  public ApiResponse<BaasStockAccountListResponse> getStockAccounts(String traceId) {
-    Long xUserId = userResolver.systemUserId();
+  public ApiResponse<BaasStockAccountListResponse> getStockAccounts(
+      String traceId, String firebaseUid) {
+    Long xUserId = userResolver.resolveByFirebaseUid(firebaseUid);
     log.info(
         "[BaasStockAccountService] getStockAccounts 시작: xUserId={}, traceId={}", xUserId, traceId);
 
@@ -36,8 +37,7 @@ public class BaasStockAccountService {
     return ApiResponse.success(response.getData(), traceId);
   }
 
-  public ApiResponse<BaasStockCashBalanceResponse> getCashBalance(
-      String traceId, Long accountId) {
+  public ApiResponse<BaasStockCashBalanceResponse> getCashBalance(String traceId, Long accountId) {
     Long xUserId = userResolver.resolveByAccount(accountId, "STOCK");
     log.info(
         "[BaasStockAccountService] getCashBalance 시작: xUserId={}, traceId={}, accountId={}",

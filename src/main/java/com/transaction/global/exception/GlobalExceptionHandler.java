@@ -33,4 +33,12 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(ApiResponse.fail("MAPPING_001", e.getMessage(), traceId));
   }
+
+  @ExceptionHandler(UserNotFoundException.class)
+  public ResponseEntity<ApiResponse<Void>> handleUserNotFoundException(
+      UserNotFoundException e, HttpServletRequest request) {
+    String traceId = (String) request.getAttribute("traceId");
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.fail("USER_001", e.getMessage(), traceId));
+  }
 }
