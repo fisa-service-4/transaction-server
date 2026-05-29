@@ -4,6 +4,12 @@ ON (t.user_id = s.user_id)
 WHEN NOT MATCHED THEN INSERT (user_id, x_user_id, user_name, phone_number)
 VALUES (s.user_id, s.x_user_id, s.user_name, s.phone_number);
 
+MERGE INTO user_master t
+USING (SELECT 2 AS user_id, 501 AS x_user_id, 'BankUser' AS user_name, '01098765432' AS phone_number FROM DUAL) s
+ON (t.user_id = s.user_id)
+WHEN NOT MATCHED THEN INSERT (user_id, x_user_id, user_name, phone_number)
+VALUES (s.user_id, s.x_user_id, s.user_name, s.phone_number);
+
 MERGE INTO user_account_mapping t
 USING (SELECT 0 AS account_id, 'SYSTEM' AS account_type, 0 AS user_id, 0 AS x_user_id FROM DUAL) s
 ON (t.account_id = s.account_id AND t.account_type = s.account_type)
@@ -17,3 +23,29 @@ ON (t.account_id = s.account_id AND t.account_type = s.account_type)
 WHEN NOT MATCHED THEN
   INSERT (account_id, account_type, user_id, x_user_id)
   VALUES (s.account_id, s.account_type, s.user_id, s.x_user_id);
+
+MERGE INTO user_account_mapping t
+USING (SELECT 1001 AS account_id, 'BANK' AS account_type, 2 AS user_id, 501 AS x_user_id FROM DUAL) s
+ON (t.account_id = s.account_id AND t.account_type = s.account_type)
+WHEN NOT MATCHED THEN
+  INSERT (account_id, account_type, user_id, x_user_id)
+  VALUES (s.account_id, s.account_type, s.user_id, s.x_user_id);
+
+MERGE INTO user_account_mapping t
+USING (SELECT 1002 AS account_id, 'BANK' AS account_type, 2 AS user_id, 501 AS x_user_id FROM DUAL) s
+ON (t.account_id = s.account_id AND t.account_type = s.account_type)
+WHEN NOT MATCHED THEN
+  INSERT (account_id, account_type, user_id, x_user_id)
+  VALUES (s.account_id, s.account_type, s.user_id, s.x_user_id);
+
+MERGE INTO transfer_user_mapping t
+USING (SELECT 5001 AS transfer_id, 501 AS x_user_id FROM DUAL) s
+ON (t.transfer_id = s.transfer_id)
+WHEN NOT MATCHED THEN INSERT (transfer_id, x_user_id)
+VALUES (s.transfer_id, s.x_user_id);
+
+MERGE INTO transfer_user_mapping t
+USING (SELECT 5002 AS transfer_id, 501 AS x_user_id FROM DUAL) s
+ON (t.transfer_id = s.transfer_id)
+WHEN NOT MATCHED THEN INSERT (transfer_id, x_user_id)
+VALUES (s.transfer_id, s.x_user_id);
