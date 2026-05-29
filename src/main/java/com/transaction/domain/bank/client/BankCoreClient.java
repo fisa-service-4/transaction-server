@@ -3,7 +3,7 @@ package com.transaction.domain.bank.client;
 import com.transaction.domain.bank.dto.request.BaasTransferRequest;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
-import com.transaction.domain.bank.dto.response.BaasTransactionCategoryListResponse;
+import com.transaction.domain.bank.dto.response.BaasTransactionCategoryResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferApproveResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferCreateResponse;
@@ -11,6 +11,7 @@ import com.transaction.domain.bank.dto.response.BaasTransferDetailResponse;
 import com.transaction.global.config.FeignConfig;
 import com.transaction.global.response.ApiResponse;
 import com.transaction.global.response.PageResponse;
+import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,7 +51,7 @@ public interface BankCoreClient {
       @RequestParam(required = false) Integer size);
 
   @GetMapping("/internal/v1/bank/accounts/{accountId}/transactions/categories")
-  ApiResponse<BaasTransactionCategoryListResponse> getTransactionCategories(
+  ApiResponse<List<BaasTransactionCategoryResponse>> getTransactionCategories(
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("accountId") Long accountId,
