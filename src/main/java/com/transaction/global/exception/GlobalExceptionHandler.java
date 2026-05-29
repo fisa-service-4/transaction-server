@@ -2,11 +2,13 @@ package com.transaction.global.exception;
 
 import com.transaction.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -14,6 +16,11 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiResponse<Void>> handleBankCoreException(
       BankCoreException e, HttpServletRequest request) {
     String traceId = (String) request.getAttribute("traceId");
+    log.error(
+        "[GlobalExceptionHandler] BankCoreException: uri={}, code={}, message={}",
+        request.getRequestURI(),
+        e.getCode(),
+        e.getMessage());
     return ResponseEntity.status(e.getStatus())
         .body(ApiResponse.fail(e.getCode(), e.getMessage(), traceId));
   }
@@ -22,6 +29,11 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiResponse<Void>> handleStockCoreException(
       StockCoreException e, HttpServletRequest request) {
     String traceId = (String) request.getAttribute("traceId");
+    log.error(
+        "[GlobalExceptionHandler] StockCoreException: uri={}, code={}, message={}",
+        request.getRequestURI(),
+        e.getCode(),
+        e.getMessage());
     return ResponseEntity.status(e.getStatus())
         .body(ApiResponse.fail(e.getCode(), e.getMessage(), traceId));
   }

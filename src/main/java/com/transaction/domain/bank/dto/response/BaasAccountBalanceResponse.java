@@ -1,16 +1,16 @@
 package com.transaction.domain.bank.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.util.List;
-import lombok.AllArgsConstructor;
+import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-@AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class BaasTransactionCategoryListResponse {
+public class BaasAccountBalanceResponse {
 
-  private List<BaasTransactionCategoryResponse> categories;
+  private Long accountId;
+  private BigDecimal balance;
+  private String updatedAt;
 }

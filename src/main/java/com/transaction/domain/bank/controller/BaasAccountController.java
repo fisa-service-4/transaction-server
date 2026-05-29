@@ -1,5 +1,6 @@
 package com.transaction.domain.bank.controller;
 
+import com.transaction.domain.bank.dto.response.BaasAccountBalanceResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionCategoryListResponse;
@@ -63,6 +64,29 @@ public class BaasAccountController {
 
     log.info(
         "[BaasAccountController] GET /baas/v1/bank/accounts/{} 완료: traceId={}", accountId, traceId);
+
+    return response;
+  }
+
+  @Operation(summary = "계좌 잔액 조회")
+  @GetMapping("/{accountId}/balance")
+  public ApiResponse<BaasAccountBalanceResponse> getAccountBalance(
+      @PathVariable Long accountId, HttpServletRequest httpRequest) {
+    String traceId = generateTraceId();
+    httpRequest.setAttribute("traceId", traceId);
+
+    log.info(
+        "[BaasAccountController] GET /baas/v1/bank/accounts/{}/balance 요청: traceId={}",
+        accountId,
+        traceId);
+
+    ApiResponse<BaasAccountBalanceResponse> response =
+        baasAccountService.getAccountBalance(traceId, accountId);
+
+    log.info(
+        "[BaasAccountController] GET /baas/v1/bank/accounts/{}/balance 완료: traceId={}",
+        accountId,
+        traceId);
 
     return response;
   }
