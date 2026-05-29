@@ -1,6 +1,7 @@
 package com.transaction.domain.bank.client;
 
 import com.transaction.domain.bank.dto.request.BaasTransferRequest;
+import com.transaction.domain.bank.dto.response.BaasAccountBalanceResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionCategoryResponse;
@@ -31,6 +32,12 @@ public interface BankCoreClient {
 
   @GetMapping("/internal/v1/bank/accounts/{accountId}")
   ApiResponse<BaasAccountDetailResponse> getAccount(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @PathVariable("accountId") Long accountId);
+
+  @GetMapping("/internal/v1/bank/accounts/{accountId}/balance")
+  ApiResponse<BaasAccountBalanceResponse> getAccountBalance(
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("accountId") Long accountId);
