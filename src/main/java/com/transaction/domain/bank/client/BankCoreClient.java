@@ -39,16 +39,6 @@ public interface BankCoreClient {
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("accountId") Long accountId,
-      @RequestParam(required = false) String fromDate,
-      @RequestParam(required = false) String toDate,
-      @RequestParam(required = false) Integer page,
-      @RequestParam(required = false) Integer size);
-
-  @GetMapping("/internal/v1/bank/accounts/{accountId}/transactions/filter")
-  ApiResponse<PageResponse<BaasTransactionResponse>> getTransactionsFilter(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader("X-Trace-Id") String traceId,
-      @PathVariable("accountId") Long accountId,
       @RequestParam(required = false) String type,
       @RequestParam(required = false) String channel,
       @RequestParam(required = false) String status,

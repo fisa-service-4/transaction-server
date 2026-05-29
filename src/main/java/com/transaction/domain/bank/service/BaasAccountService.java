@@ -61,7 +61,9 @@ public class BaasAccountService {
         accountId);
 
     ApiResponse<PageResponse<BaasTransactionResponse>> response =
-        bankCoreClient.getTransactions(xUserId, traceId, accountId, fromDate, toDate, page, size);
+        bankCoreClient.getTransactions(
+            xUserId, traceId, accountId, null, null, null, fromDate, toDate, null, null, page,
+            size);
 
     log.info(
         "[BaasAccountService] bank-server getTransactions 완료: accountId={}, totalElements={}",
@@ -91,7 +93,7 @@ public class BaasAccountService {
         accountId);
 
     ApiResponse<PageResponse<BaasTransactionResponse>> response =
-        bankCoreClient.getTransactionsFilter(
+        bankCoreClient.getTransactions(
             xUserId, traceId, accountId, type, channel, status, fromDate, toDate, minAmount,
             maxAmount, page, size);
 

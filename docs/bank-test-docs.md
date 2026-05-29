@@ -180,7 +180,22 @@ curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/9999" | jq .
 
 ---
 
-## BANK-ACCOUNT-003. 거래내역 조회
+## BANK-ACCOUNT-003. 계좌 잔액 조회
+
+```bash
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/balance" | jq .
+```
+
+```bash
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1002/balance" | jq .
+```
+
+---
+
+## BANK-ACCOUNT-004. 거래내역 조회
+
+> 모든 필터는 선택 사항이며 자유롭게 조합할 수 있습니다.
+> 내부적으로 bank-server `GET /internal/v1/bank/accounts/{id}/transactions` 로 라우팅됩니다.
 
 **전체 조회 (필터 없음):**
 
@@ -194,27 +209,17 @@ curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions" |
 curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?fromDate=2026-05-01&toDate=2026-05-31" | jq .
 ```
 
-**페이지네이션:**
-
-```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?page=0&size=10" | jq .
-```
-
----
-
-## BANK-ACCOUNT-004. 거래내역 필터 조회
-
 **거래 유형 필터:**
 
 ```bash
 # 입금만 조회
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?type=DEPOSIT" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?type=DEPOSIT" | jq .
 
 # 출금만 조회
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?type=WITHDRAW" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?type=WITHDRAW" | jq .
 
 # 이체 출금만 조회
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1002/transactions/filter?type=TRANSFER_OUT" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1002/transactions?type=TRANSFER_OUT" | jq .
 ```
 
 > `type` 허용값: `DEPOSIT` / `WITHDRAW` / `TRANSFER_IN` / `TRANSFER_OUT` / `AUTO_TRANSFER`
@@ -223,10 +228,10 @@ curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1002/transactions/fi
 
 ```bash
 # AI_AGENT 채널만 조회
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?channel=AI_AGENT" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?channel=AI_AGENT" | jq .
 
 # 실패 거래만 조회
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?status=FAILED" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?status=FAILED" | jq .
 ```
 
 > `channel` 허용값: `APP` / `AI_AGENT`
@@ -236,13 +241,13 @@ curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/fi
 
 ```bash
 # 10만원 이상 거래
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?minAmount=100000" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?minAmount=100000" | jq .
 ```
 
 **복합 필터 + 페이지네이션:**
 
 ```bash
-curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?type=DEPOSIT&channel=APP&status=SUCCESS&fromDate=2026-05-01&toDate=2026-05-31&page=0&size=10" | jq .
+curl -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?type=DEPOSIT&channel=APP&status=SUCCESS&fromDate=2026-05-01&toDate=2026-05-31&page=0&size=10" | jq .
 ```
 
 ---
@@ -414,16 +419,17 @@ curl -s -X GET "http://localhost:8083/baas/v1/bank/transfers/9999" | jq .
 1. USER-LINK-001            → firebase_uid 등록 (BankUser / 01098765432)
 2. BANK-ACCOUNT-001         → 계좌 목록 조회 (1001, 1002 확인)
 3. BANK-ACCOUNT-002 (1001)  → 계좌 상세 조회 (잔액 5,000,000 확인)
-4. BANK-ACCOUNT-003 (1001)  → 거래내역 전체 조회 (시드 3건 확인)
-5. BANK-ACCOUNT-004         → type=DEPOSIT 필터 (급여 1건만 확인)
-6. BANK-ACCOUNT-005         → 카테고리 집계 (급여 / 식비 확인)
-7. BANK-TRANSFER-003 (5001) → 시드 이체 조회 (SUCCESS 확인)
-8. BANK-TRANSFER-003 (5002) → 시드 이체 조회 (PROCESSING 확인)
-9. BANK-TRANSFER-001        → 이체 실행 → transferId 메모
-10. BANK-TRANSFER-003       → 이체 결과 조회 (REQUESTED 상태 확인)
-11. BANK-TRANSFER-002       → 이체 승인 (SUCCESS 전환 확인)
-12. BANK-TRANSFER-003       → 이체 재조회 (SUCCESS 확인)
-13. BANK-ACCOUNT-003 (1001) → 거래내역 재조회 (이체 거래 추가 확인)
+4. BANK-ACCOUNT-003 (1001)  → 잔액 조회
+5. BANK-ACCOUNT-004 (1001)  → 거래내역 전체 조회 (시드 3건 확인)
+6. BANK-ACCOUNT-004         → type=DEPOSIT 필터 (급여 1건만 확인)
+7. BANK-ACCOUNT-005         → 카테고리 집계 (급여 / 식비 확인)
+8. BANK-TRANSFER-003 (5001) → 시드 이체 조회 (SUCCESS 확인)
+9. BANK-TRANSFER-003 (5002) → 시드 이체 조회 (PROCESSING 확인)
+10. BANK-TRANSFER-001        → 이체 실행 → transferId 메모
+11. BANK-TRANSFER-003        → 이체 결과 조회 (REQUESTED 상태 확인)
+12. BANK-TRANSFER-002        → 이체 승인 (SUCCESS 전환 확인)
+13. BANK-TRANSFER-003        → 이체 재조회 (SUCCESS 확인)
+14. BANK-ACCOUNT-004 (1001)  → 거래내역 재조회 (이체 거래 추가 확인)
 ```
 
 ---
@@ -440,7 +446,7 @@ curl.exe -s -X POST "http://localhost:8083/baas/v1/bank/transfers" `
 
 ```powershell
 # 거래내역 복합 필터
-curl.exe -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions/filter?type=DEPOSIT&status=SUCCESS" | jq .
+curl.exe -s -X GET "http://localhost:8083/baas/v1/bank/accounts/1001/transactions?type=DEPOSIT&status=SUCCESS" | jq .
 ```
 
 ```powershell

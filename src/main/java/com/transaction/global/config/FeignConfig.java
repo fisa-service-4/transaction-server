@@ -7,6 +7,7 @@ import feign.Response;
 import feign.codec.ErrorDecoder;
 import java.io.IOException;
 import java.io.InputStream;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 
@@ -17,6 +18,7 @@ public class FeignConfig {
     return new BankCoreErrorDecoder();
   }
 
+  @Slf4j
   static class BankCoreErrorDecoder implements ErrorDecoder {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -34,8 +36,16 @@ public class FeignConfig {
           code = error.path("code").asText(code);
           message = error.path("message").asText(message);
         }
-      } catch (IOException ignored) {
+      } catch (IOException e) {
+        log.warn("[BankCoreErrorDecoder] 응답 바디 파싱 실패: method={}, status={}", methodKey, status, e);
       }
+
+      log.error(
+          "[BankCoreErrorDecoder] bank-server 오류: method={}, status={}, code={}, message={}",
+          methodKey,
+          status,
+          code,
+          message);
 
       return new BankCoreException(code, message, status);
     }
