@@ -1,0 +1,35 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: transaction-server
+
+  datasource:
+    url: jdbc:oracle:thin:@oracle-onpremise:1521/XEPDB1
+    username: TRANS
+    password: trans123
+    driver-class-name: oracle.jdbc.OracleDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    defer-datasource-initialization: true
+    database-platform: org.hibernate.dialect.OracleDialect
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+      continue-on-error: true
+
+  kafka:
+    bootstrap-servers: kafka:9092
+
+core:
+  bank:
+    url: ${BANK_SERVER_URL:http://bank-server:8081}
+  stock:
+    url: ${STOCK_SERVER_URL:http://stock-server:8082}
