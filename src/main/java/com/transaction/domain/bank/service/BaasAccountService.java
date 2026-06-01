@@ -7,6 +7,7 @@ import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionCategoryListResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionCategoryResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionResponse;
+import com.transaction.global.exception.BankCoreException;
 import com.transaction.global.resolver.UserResolver;
 import com.transaction.global.response.ApiResponse;
 import com.transaction.global.response.PageResponse;
@@ -28,14 +29,19 @@ public class BaasAccountService {
     Long xUserId = userResolver.resolveByFirebaseUid(firebaseUid);
     log.info("[BaasAccountService] getAccounts 시작: xUserId={}, traceId={}", xUserId, traceId);
 
-    ApiResponse<BaasAccountListResponse> response =
-        bankCoreClient.getAccounts(xUserId, traceId, status);
+    try {
+      ApiResponse<BaasAccountListResponse> response =
+          bankCoreClient.getAccounts(xUserId, traceId, status);
 
-    log.info(
-        "[BaasAccountService] bank-server getAccounts 완료: count={}",
-        response.getData().getContent() != null ? response.getData().getContent().size() : 0);
+      log.info(
+          "[BaasAccountService] bank-server getAccounts 완료: count={}",
+          response.getData().getContent() != null ? response.getData().getContent().size() : 0);
 
-    return ApiResponse.success(response.getData(), traceId);
+      return ApiResponse.success(response.getData(), traceId);
+    } catch (BankCoreException e) {
+      log.info("[BaasAccountService] bank-server 계좌 없음: xUserId={}, code={}", xUserId, e.getCode());
+      return ApiResponse.success(new BaasAccountListResponse(), traceId);
+    }
   }
 
   public ApiResponse<BaasAccountDetailResponse> getAccount(String traceId, Long accountId) {

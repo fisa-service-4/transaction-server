@@ -38,6 +38,18 @@ public class UserMaster {
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
 
+  public static UserMaster create(
+      Long userId, Long xUserId, String firebaseUid, String userName, String phoneNumber) {
+    UserMaster user = new UserMaster();
+    user.userId = userId;
+    user.xUserId = xUserId;
+    user.firebaseUid = firebaseUid;
+    user.userName = userName;
+    user.phoneNumber = phoneNumber;
+    user.linkedAt = LocalDateTime.now();
+    return user;
+  }
+
   public void link(String firebaseUid) {
     this.firebaseUid = firebaseUid;
     this.linkedAt = LocalDateTime.now();
