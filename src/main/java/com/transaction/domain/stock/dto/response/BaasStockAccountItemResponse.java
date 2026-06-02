@@ -1,6 +1,7 @@
 package com.transaction.domain.stock.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -13,4 +14,5 @@ public class BaasStockAccountItemResponse {
   private String accountNumber;
   private String accountName;
   private String bankCode;
+  private BigDecimal cashBalance;
 }
