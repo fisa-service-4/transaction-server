@@ -1,6 +1,7 @@
 package com.transaction.domain.bank.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,5 +11,5 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BaasAccountListResponse {
 
-  private List<BaasAccountSummaryResponse> content;
+  private List<BaasAccountSummaryResponse> content = new ArrayList<>();
 }
