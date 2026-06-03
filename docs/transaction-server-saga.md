@@ -1,13 +1,15 @@
 # transaction-server Saga 구현 계획
 
-> 작성일: 2026-06-01  
+> 작성일: 2026-06-01
+> 최종 수정: 2026-06-04
 > 대상: transaction-server (`domain/saga`, `domain/outbox`, `domain/deadletter`, `domain/reconciliation`)
+> 참조: `docs/onpremise-saga.md`
 
 ---
 
 ## 1. 개요
 
-transaction-server는 금융 분산 트랜잭션의 Saga Orchestrator다.
+transaction-server는 금융 분산 트랜잭션의 **Saga Orchestrator**이자 **채널계 Orchestration Layer**다.
 
 **Saga 적용 대상** — 서로 다른 금융 원장 간 이동만:
 - 은행 계좌 → 증권 예수금 충전 (`BANK_TO_STOCK`)
@@ -15,36 +17,105 @@ transaction-server는 금융 분산 트랜잭션의 Saga Orchestrator다.
 
 기존 bank 내부 이체 / stock 주문에는 Saga 미적용.
 
-**방식:** Synchronous Orchestration + Outbox → Kafka 비동기 이벤트 발행 (관측용)
+**방식:** 기존 `POST /baas/v1/bank/transfers` 내부에서 Saga 라우팅 수행 (saga-specific 엔드포인트 없음)
+**제어 흐름:** Synchronous REST Orchestration (bank/stock을 순차 호출)
+**이벤트:** Outbox → Kafka 비동기 발행 (감사/알림/분석용)
 
 ---
 
-## 2. bank/stock 서버 연동 API
+## 2. Saga 진입 및 라우팅
 
-### bank-server — 기존 2-step 이체 API 활용 (추가 개발 없음)
+service-backend는 기존 `POST /baas/v1/bank/transfers`를 그대로 사용한다.
+transaction-server 내부에서 요청 내용을 분석해 Saga 유형을 결정한다.
 
-| 단계 | API | 설명 |
-|------|-----|------|
-| Reserve | `POST /internal/v1/bank/transfers` | 이체 예약 → `REQUESTED` (잔액 변동 없음) |
-| Commit | `POST /internal/v1/bank/transfers/{id}/approve` | 실제 출금 실행 → Saga Commit |
+```
+POST /baas/v1/bank/transfers 수신
+    ↓
+fromAccountId 계좌 유형 조회
+    ↓
+├── 은행계좌 → toBankCode 분석
+│       ├── 증권사 코드 → BANK_TO_STOCK Saga
+│       └── 그 외      → 기존 bank-to-bank 이체
+└── 증권계좌 → STOCK_TO_BANK Saga
+```
 
-> bank-server 문서: "이체 승인은 Saga Commit 단계. 실제 서비스에서 Transaction Server가 호출"
+---
 
-### stock-server — Saga 전용 API (이미 spec 작성됨)
+## 3. bank/stock 서버 연동 API
 
-`docs/api/api-stock-server.md` 하단 `STOCK-CASH-001`, `STOCK-CASH-002` 참조
+### bank-server — 기존 API + cancel API (신규 확정)
+
+| 단계 | 메서드 | 경로 | 설명 |
+|------|--------|------|------|
+| 이체 생성 | POST | `/internal/v1/bank/transfers` | 이체 레코드 생성 → `REQUESTED` (잔액 변동 없음) |
+| 이체 확정 | POST | `/internal/v1/bank/transfers/{id}/approve` | 잔액 검증 + 실제 출금/입금 실행 → `SUCCESS` |
+| 이체 취소 | POST | `/internal/v1/bank/transfers/{id}/cancel` | `REQUESTED → CANCELLED` (**신규 구현 확정**) |
+| 상태 조회 | GET | `/internal/v1/bank/transfers/{id}` | approve timeout 후 상태 확인용 |
+
+**BankCoreClient 추가 메서드:**
+
+```java
+@PostMapping("/internal/v1/bank/transfers/{id}/cancel")
+ApiResponse<Void> cancelTransfer(
+    @RequestHeader("X-User-Id") Long userId,
+    @RequestHeader("X-Trace-Id") String traceId,
+    @PathVariable("id") Long transferId);
+```
+
+### stock-server — Saga 전용 API (신규 구현)
 
 | 메서드 | 경로 | 역할 |
 |--------|------|------|
-| POST | `/internal/v1/stock/accounts/{accountId}/cash/deposit` | 예수금 충전 (Saga Step) |
-| POST | `/internal/v1/stock/accounts/{accountId}/cash/withdraw` | 예수금 출금 (Compensation) |
+| POST | `/internal/v1/stock/accounts/{accountId}/cash/deposit` | 예수금 충전 |
+| POST | `/internal/v1/stock/accounts/{accountId}/cash/withdraw` | 예수금 차감 (보상 포함) |
 
-Request: `{ "amount": 500000, "sagaId": 1001 }`  
-Response: `{ "accountId": 2001, "cashBalance": 10500000 }`
+**공통 헤더:**
+
+```
+X-User-Id: {userId}
+X-Trace-Id: {traceId}
+Idempotency-Key: {sagaId}_{OPERATION_TYPE}    ← transaction-server가 생성해서 전달
+```
+
+**Idempotency-Key 생성 규칙:**
+
+| 호출 대상 | 생성 키 |
+|-----------|---------|
+| BANK_TO_STOCK 정상 deposit | `{sagaId}_DEPOSIT` |
+| STOCK_TO_BANK 정상 withdraw | `{sagaId}_WITHDRAW` |
+| BANK_TO_STOCK 보상 withdraw | `{sagaId}_COMPENSATION_WITHDRAW` |
+| STOCK_TO_BANK 보상 deposit | `{sagaId}_COMPENSATION_DEPOSIT` |
+
+**Request body:** `{ "amount": 500000 }`
+**Response body:** `{ "accountId": 2001, "cashBalance": 10500000 }`
+
+**StockCoreClient 추가 메서드:**
+
+```java
+@PostMapping("/internal/v1/stock/accounts/{accountId}/cash/deposit")
+ApiResponse<StockCashResponse> depositCash(
+    @RequestHeader("X-User-Id") Long userId,
+    @RequestHeader("X-Trace-Id") String traceId,
+    @RequestHeader("Idempotency-Key") String idempotencyKey,
+    @PathVariable Long accountId,
+    @RequestBody StockCashRequest request);
+
+@PostMapping("/internal/v1/stock/accounts/{accountId}/cash/withdraw")
+ApiResponse<StockCashResponse> withdrawCash(
+    @RequestHeader("X-User-Id") Long userId,
+    @RequestHeader("X-Trace-Id") String traceId,
+    @RequestHeader("Idempotency-Key") String idempotencyKey,
+    @PathVariable Long accountId,
+    @RequestBody StockCashRequest request);
+```
+
+신규 DTO:
+- `domain/stock/dto/request/StockCashRequest.java` — `amount` (Long)
+- `domain/stock/dto/response/StockCashResponse.java` — `accountId`, `cashBalance`
 
 ---
 
-## 3. DB Schema 추가 (schema.sql)
+## 4. DB Schema 추가 (schema.sql)
 
 Oracle 방언. `src/main/resources/db/schema.sql` 기존 테이블 하단에 추가.
 
@@ -140,7 +211,7 @@ CREATE TABLE transaction_audit_log (
 
 ---
 
-## 4. 구현 파일 목록
+## 5. 구현 파일 목록
 
 ### domain/saga/
 
@@ -149,22 +220,17 @@ entity/
   SagaTransaction.java
   SagaStepHistory.java
 enums/
-  SagaStatus.java        -- STARTED / PROCESSING / SUCCESS / FAILED / COMPENSATING / COMPENSATED
-  SagaStepStatus.java    -- SUCCESS / FAILED / COMPENSATED
-  SagaType.java          -- BANK_TO_STOCK / STOCK_TO_BANK
+  SagaStatus.java     -- STARTED / PROCESSING / SUCCESS / FAILED
+                         / COMPENSATING / COMPENSATED / UNKNOWN / COMPENSATION_FAILED
+  SagaStepStatus.java -- SUCCESS / FAILED / COMPENSATED
+  SagaType.java       -- BANK_TO_STOCK / STOCK_TO_BANK
+  SagaStepName.java   -- BANK_TRANSFER_REQUEST_CREATED / STOCK_CASH_DEPOSIT / BANK_TRANSFER_COMMIT
+                         / STOCK_CASH_WITHDRAW / STOCK_CASH_WITHDRAW_COMPENSATION / STOCK_CASH_DEPOSIT_COMPENSATION
 repository/
   SagaTransactionRepository.java
   SagaStepHistoryRepository.java
 service/
-  SagaOrchestrator.java
-controller/
-  SagaController.java
-dto/request/
-  BankToStockRequest.java   -- fromAccountId, toAccountId, amount
-  StockToBankRequest.java   -- fromAccountId, toAccountId, amount
-dto/response/
-  SagaResponse.java         -- sagaId, status, transactionKey
-  SagaDetailResponse.java   -- sagaId, status, steps[]
+  SagaOrchestrator.java    -- route() / bankToStock() / stockToBank()
 ```
 
 ### domain/outbox/
@@ -212,22 +278,35 @@ repository/
   IdempotencyKeyRepository.java
   TransactionAuditLogRepository.java
 service/
-  IdempotencyService.java   -- check / complete / fail
-  AuditService.java         -- record
+  IdempotencyService.java  -- check / complete / fail
+  AuditService.java        -- record
 config/
-  KafkaConfig.java          -- KafkaTemplate<String, String> Producer
-  KafkaTopics.java          -- 토픽 상수
+  KafkaConfig.java         -- KafkaTemplate<String, String> Producer
+  KafkaTopics.java         -- 토픽 상수 4개
+```
+
+### domain/bank/client/ 수정
+
+`BankCoreClient.java`에 cancel 메서드 추가:
+
+```java
+@PostMapping("/internal/v1/bank/transfers/{id}/cancel")
+ApiResponse<Void> cancelTransfer(
+    @RequestHeader("X-User-Id") Long userId,
+    @RequestHeader("X-Trace-Id") String traceId,
+    @PathVariable("id") Long transferId);
 ```
 
 ### domain/stock/client/ 확장
 
-`StockCoreClient.java`에 2개 메서드 추가:
+`StockCoreClient.java`에 2개 메서드 추가 (Idempotency-Key 헤더 포함):
 
 ```java
 @PostMapping("/internal/v1/stock/accounts/{accountId}/cash/deposit")
 ApiResponse<StockCashResponse> depositCash(
     @RequestHeader("X-User-Id") Long userId,
     @RequestHeader("X-Trace-Id") String traceId,
+    @RequestHeader("Idempotency-Key") String idempotencyKey,
     @PathVariable Long accountId,
     @RequestBody StockCashRequest request);
 
@@ -235,93 +314,185 @@ ApiResponse<StockCashResponse> depositCash(
 ApiResponse<StockCashResponse> withdrawCash(
     @RequestHeader("X-User-Id") Long userId,
     @RequestHeader("X-Trace-Id") String traceId,
+    @RequestHeader("Idempotency-Key") String idempotencyKey,
     @PathVariable Long accountId,
     @RequestBody StockCashRequest request);
 ```
 
 신규 DTO:
-- `domain/stock/dto/request/StockCashRequest.java` — `amount`, `sagaId`
+- `domain/stock/dto/request/StockCashRequest.java` — `amount` (Long)
 - `domain/stock/dto/response/StockCashResponse.java` — `accountId`, `cashBalance`
 
 ---
 
-## 5. Saga 오케스트레이션 흐름
+## 6. Saga 오케스트레이션 흐름
 
 ### BANK_TO_STOCK 성공 흐름
 
 ```
-1. IdempotencyService.check(idempotencyKey)
-2. SagaTransaction 생성 (STARTED, total_steps=3)
-3. AuditService.record(STARTED)
+[service-backend] POST /baas/v1/bank/transfers
+Header: Idempotency-Key: {uuid}, X-User-Id, X-Trace-Id
+Body: { fromAccountId: 1001, toBankCode: "039", toAccountNumber: "...", transferAmount: 500000 }
+    ↓
+[transaction-server] 라우팅: fromAccountId=은행계좌, toBankCode=증권사 → BANK_TO_STOCK Saga
 
-4. [STEP 1] bankCoreClient.createTransfer(fromAccountId, stockSystemAccount, amount)
-   → 이체 예약, transferId 획득 (잔액 변동 없음)
-   → SagaStepHistory(BANK_TRANSFER_RESERVE, SUCCESS, order=1)
-   → SagaTransaction(PROCESSING)
+  1. IdempotencyService.check(idempotencyKey)        ← 중복 요청 시 저장된 응답 반환
+  2. SagaTransaction INSERT (STARTED)
+     + OutboxEvent INSERT (saga.started)
+     → 동일 트랜잭션 Commit
 
-5. [STEP 2] stockCoreClient.depositCash(toAccountId, amount)
-   → 증권 예수금 증가
-   → SagaStepHistory(STOCK_CASH_DEPOSIT, SUCCESS, order=2)
-   → SagaTransaction(PROCESSING)
+  ─── STEP 1: BANK_TRANSFER_REQUEST_CREATED ───────────────────────
+  3. BankCoreClient.createTransfer()
+     Header: Idempotency-Key = {idempotencyKey}
+     → 이체 레코드 생성, 잔액 변동 없음 → REQUESTED 반환, transferId 획득
+     → SagaStepHistory INSERT (BANK_TRANSFER_REQUEST_CREATED, SUCCESS)
+     → SagaTransaction UPDATE (PROCESSING)
 
-6. [STEP 3] bankCoreClient.approveTransfer(transferId)
-   → 은행 실제 출금 (Saga Commit)
-   → SagaStepHistory(BANK_TRANSFER_COMMIT, SUCCESS, order=3)
-   → SagaTransaction(SUCCESS)
+  ─── STEP 2: STOCK_CASH_DEPOSIT ──────────────────────────────────
+  4. StockCoreClient.depositCash(toStockAccountId, amount)
+     Header: Idempotency-Key = "{sagaId}_DEPOSIT"
+     → stock: cash_balance 증가
+     → SagaStepHistory INSERT (STOCK_CASH_DEPOSIT, SUCCESS)
 
-7. OutboxService.save(topic: saga.completed)
-8. AuditService.record(SUCCESS)
-9. IdempotencyService.complete(idempotencyKey, response)
+  ─── STEP 3: BANK_TRANSFER_COMMIT ────────────────────────────────
+  5. BankCoreClient.approveTransfer(transferId)
+     → 잔액 검증 + 실제 출금 실행 → SUCCESS
+     → SagaStepHistory INSERT (BANK_TRANSFER_COMMIT, SUCCESS)
+     → SagaTransaction UPDATE (SUCCESS)
+     + OutboxEvent INSERT (saga.completed)
+     → 동일 트랜잭션 Commit
+     → TransactionAuditLog INSERT
+     → IdempotencyService.complete(idempotencyKey, response)
 ```
 
-### BANK_TO_STOCK 실패 케이스
+### BANK_TO_STOCK 실패 흐름
 
 ```
-[Case A] STEP 2 실패 — stock deposit 실패, bank 아직 미커밋
-  approve 미호출 → 잔액 변동 없음 (transfer는 REQUESTED 방치)
-  SagaTransaction(FAILED)
-  OutboxService.save(topic: saga.failed)
-  ※ 방치된 REQUESTED 이체는 Reconciliation 배치로 주기적 정리
+[Case A] STEP 2 실패 — stock deposit 오류, bank 미커밋
+  SagaStepHistory INSERT (STOCK_CASH_DEPOSIT, FAILED)
+  SagaTransaction UPDATE (FAILED)
+  + OutboxEvent INSERT (saga.failed)
+  → 동일 트랜잭션 Commit
 
-[Case B] STEP 3 실패 — bank approve 실패, stock 이미 예수금 증가
-  SagaTransaction(COMPENSATING)
-  OutboxService.save(topic: saga.compensation.started)
-  [COMPENSATION] stockCoreClient.withdrawCash(toAccountId, amount)
-  SagaStepHistory(STOCK_CASH_WITHDRAW_COMPENSATION, COMPENSATED, order=4)
-  SagaTransaction(COMPENSATED)
-  OutboxService.save(topic: saga.compensation.completed)
+  BankCoreClient.cancelTransfer(transferId)   ← REQUESTED → CANCELLED 명시적 종료
+
+[Case B] STEP 3 실패 — bank approve 명확한 실패, stock 예수금 이미 증가
+  SagaStepHistory INSERT (BANK_TRANSFER_COMMIT, FAILED)
+  SagaTransaction UPDATE (COMPENSATING)
+  + OutboxEvent INSERT (saga.compensated)
+  → 동일 트랜잭션 Commit
+
+  [COMPENSATION] StockCoreClient.withdrawCash(toStockAccountId, amount)
+  Header: Idempotency-Key = "{sagaId}_COMPENSATION_WITHDRAW"
+  → stock: 예수금 차감
+  → SagaStepHistory INSERT (STOCK_CASH_WITHDRAW_COMPENSATION, COMPENSATED)
+  → SagaTransaction UPDATE (COMPENSATED)
+  + OutboxEvent INSERT (saga.compensated)
+  → 동일 트랜잭션 Commit
+
+[Case UNKNOWN] STEP 3 timeout — approve 결과 불명
+  BankCoreClient.getTransfer(transferId) 상태 조회
+    ├── SUCCESS   → Saga SUCCESS로 처리
+    ├── REQUESTED → bank 미처리 → Case B(Compensation) 흐름
+    └── 조회도 실패
+        → SagaTransaction UPDATE (UNKNOWN)
+        + OutboxEvent INSERT (saga.unknown)
+        → 수동 개입 필요 (운영팀 알림)
 ```
 
-### STOCK_TO_BANK (역방향, 동일 패턴)
+### STOCK_TO_BANK 성공 흐름
 
 ```
-[STEP 1] stockCoreClient.withdrawCash(fromAccountId, amount)
-[STEP 2] bankCoreClient.createTransfer(stockSystemAccount → toAccountId, amount)
-[STEP 3] bankCoreClient.approveTransfer(transferId)
+[service-backend] POST /baas/v1/bank/transfers
+Body: { fromAccountId: 2001 (증권계좌), ... }
+    ↓
+[transaction-server] 라우팅: fromAccountId=증권계좌 → STOCK_TO_BANK Saga
 
-Case A (STEP 2/3 실패): stockCoreClient.depositCash() 복구
+  1. IdempotencyService.check()
+  2. SagaTransaction INSERT (STARTED) + OutboxEvent (saga.started)
+
+  ─── STEP 1: STOCK_CASH_WITHDRAW ─────────────────────────────────
+  3. StockCoreClient.withdrawCash(fromStockAccountId, amount)
+     Header: Idempotency-Key = "{sagaId}_WITHDRAW"
+     → stock: 예수금 차감
+     → SagaStepHistory INSERT (STOCK_CASH_WITHDRAW, SUCCESS)
+     → SagaTransaction UPDATE (PROCESSING)
+
+  ─── STEP 2: BANK_TRANSFER_REQUEST_CREATED ───────────────────────
+  4. BankCoreClient.createTransfer(...)
+     → 이체 레코드 생성 → REQUESTED
+     → SagaStepHistory INSERT (BANK_TRANSFER_REQUEST_CREATED, SUCCESS)
+
+  ─── STEP 3: BANK_TRANSFER_COMMIT ────────────────────────────────
+  5. BankCoreClient.approveTransfer(transferId)
+     → 입금 실행
+     → SagaStepHistory INSERT (BANK_TRANSFER_COMMIT, SUCCESS)
+     → SagaTransaction UPDATE (SUCCESS) + OutboxEvent (saga.completed)
+     → AuditLog + IdempotencyKey 완료
 ```
 
-### SagaController 엔드포인트
+### STOCK_TO_BANK 실패 흐름
 
 ```
-POST /baas/v1/saga/bank-to-stock   Header: Idempotency-Key, X-Firebase-Uid
-POST /baas/v1/saga/stock-to-bank   Header: Idempotency-Key, X-Firebase-Uid
-GET  /baas/v1/saga/{sagaId}        Saga 상태 조회
-GET  /baas/v1/saga/{sagaId}/steps  단계별 이력 조회
+[STEP 1 실패] stock withdraw 오류 (잔액 부족 등)
+  SagaTransaction UPDATE (FAILED) + OutboxEvent (saga.failed)
+  → 보상 없음 (stock 변동 없음, bank 미호출)
+
+[STEP 2/3 실패 또는 UNKNOWN] stock 예수금 이미 차감
+  SagaTransaction UPDATE (COMPENSATING)
+  + OutboxEvent INSERT (saga.compensated)
+
+  [COMPENSATION] StockCoreClient.depositCash(fromStockAccountId, amount)
+  Header: Idempotency-Key = "{sagaId}_COMPENSATION_DEPOSIT"
+  → stock: 예수금 복구
+  → SagaTransaction UPDATE (COMPENSATED) + OutboxEvent (saga.compensated)
 ```
 
 ---
 
-## 6. Kafka 토픽
+## 7. Kafka 토픽
 
-| 토픽 | 발행 시점 |
-|------|-----------|
-| `saga.started` | Saga 생성 시 |
-| `saga.completed` | 전체 성공 시 |
-| `saga.failed` | 실패 (보상 없이 종료) |
-| `saga.compensation.started` | 보상 시작 시 |
-| `saga.compensation.completed` | 보상 완료 시 |
+| 토픽 | 발행 시점 | 주요 payload |
+|------|-----------|-------------|
+| `saga.started` | Saga 시작 | sagaId, sagaType, amount |
+| `saga.completed` | 모든 단계 성공 | sagaId, steps 결과 |
+| `saga.failed` | 단계 실패, 보상 불필요 | sagaId, failedStep, reason |
+| `saga.compensated` | 보상 트랜잭션 완료 | sagaId, compensatedStep |
 
-OutboxRelayScheduler: `@Scheduled(fixedDelay=1000)` → `published_yn=false` 이벤트 최대 100건씩 Kafka 발행  
+OutboxRelayScheduler: `@Scheduled(fixedDelay=1000)` → `published_yn=false` 이벤트 최대 100건씩 Kafka 발행
 3회 실패 시 → DeadLetterEvent 저장
+
+---
+
+## 8. SagaStepName 열거형
+
+| 값 | 방향 | 설명 |
+|----|------|------|
+| `BANK_TRANSFER_REQUEST_CREATED` | 공통 | bank 이체 레코드 생성 (잔액 변동 없음) |
+| `STOCK_CASH_DEPOSIT` | BANK_TO_STOCK 정상 | stock 예수금 충전 |
+| `BANK_TRANSFER_COMMIT` | 공통 | bank 이체 확정 (실제 출금/입금) |
+| `STOCK_CASH_WITHDRAW` | STOCK_TO_BANK 정상 | stock 예수금 차감 |
+| `STOCK_CASH_WITHDRAW_COMPENSATION` | BANK_TO_STOCK 보상 | stock 예수금 회수 |
+| `STOCK_CASH_DEPOSIT_COMPENSATION` | STOCK_TO_BANK 보상 | stock 예수금 복구 |
+
+---
+
+## 9. SagaTransaction 상태 전이
+
+```
+STARTED
+  → (STEP 진행) PROCESSING
+  → (모든 STEP 성공) SUCCESS
+
+PROCESSING
+  → (단계 실패, 보상 불필요) FAILED
+  → (단계 실패, 보상 필요) COMPENSATING
+  → (approve timeout, 상태 조회 실패) UNKNOWN
+
+COMPENSATING
+  → (보상 성공) COMPENSATED
+  → (보상 실패) COMPENSATION_FAILED
+
+UNKNOWN             ← 수동 개입 필요
+COMPENSATION_FAILED ← 수동 개입 필요
+```
