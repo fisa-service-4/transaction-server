@@ -1,7 +1,9 @@
 package com.transaction.domain.bank.client;
 
 import com.transaction.domain.bank.dto.request.BaasTransferRequest;
+import com.transaction.domain.bank.dto.request.ReconciliationRunRequest;
 import com.transaction.domain.bank.dto.response.BaasAccountBalanceResponse;
+import com.transaction.domain.bank.dto.response.ReconciliationRunResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionCategoryResponse;
@@ -89,4 +91,10 @@ public interface BankCoreClient {
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("transferId") Long transferId);
+
+  @PostMapping("/internal/v1/bank/reconciliation/run")
+  ApiResponse<ReconciliationRunResponse> runReconciliation(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @RequestBody ReconciliationRunRequest request);
 }
