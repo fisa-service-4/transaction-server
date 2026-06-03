@@ -83,4 +83,10 @@ public interface BankCoreClient {
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("transferId") Long transferId);
+
+  @PostMapping("/internal/v1/bank/transfers/{transferId}/cancel")
+  ApiResponse<Void> cancelTransfer(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @PathVariable("transferId") Long transferId);
 }
