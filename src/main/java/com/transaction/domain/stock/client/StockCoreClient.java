@@ -1,7 +1,9 @@
 package com.transaction.domain.stock.client;
 
 import com.transaction.domain.stock.dto.request.BaasStockOrderRequest;
+import com.transaction.domain.stock.dto.request.StockCashRequest;
 import com.transaction.domain.stock.dto.response.BaasStockAccountListResponse;
+import com.transaction.domain.stock.dto.response.StockCashResponse;
 import com.transaction.domain.stock.dto.response.BaasStockCashBalanceResponse;
 import com.transaction.domain.stock.dto.response.BaasStockChartResponse;
 import com.transaction.domain.stock.dto.response.BaasStockExecutionResponse;
@@ -114,4 +116,20 @@ public interface StockCoreClient {
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("orderId") Long orderId);
+
+  @PostMapping("/internal/v1/stock/accounts/{accountId}/cash/deposit")
+  ApiResponse<StockCashResponse> depositCash(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @RequestHeader("Idempotency-Key") String idempotencyKey,
+      @PathVariable("accountId") Long accountId,
+      @RequestBody StockCashRequest request);
+
+  @PostMapping("/internal/v1/stock/accounts/{accountId}/cash/withdraw")
+  ApiResponse<StockCashResponse> withdrawCash(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @RequestHeader("Idempotency-Key") String idempotencyKey,
+      @PathVariable("accountId") Long accountId,
+      @RequestBody StockCashRequest request);
 }
