@@ -490,3 +490,105 @@
   }
 }
 ```
+
+---
+
+---
+
+# ====== transaction-saga용 API ======
+
+> transaction-server → stock-server 인바운드 호출 전용.
+> Saga orchestration 연동용이며 일반 클라이언트 호출 대상 아님.
+
+---
+
+## STOCK-CASH-001. 예수금 입금
+
+**POST** `/accounts/{accountId}/cash/deposit`
+
+> Write API — Saga 정상 step
+
+### Request Body
+
+```json
+{
+  "amount": 500000,
+  "sagaId": 1001
+}
+```
+
+### Request Fields
+
+| 필드    | 타입    | 필수 | 설명                    |
+| ------- | ------- | ---- | ----------------------- |
+| amount  | Decimal | O    | 입금 금액 (0 초과)      |
+| sagaId  | Long    | X    | Saga 추적 ID (로깅용)   |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "accountId": 2001,
+    "cashBalance": 10500000
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+### Error Cases
+
+| 상황           | 코드        | 메시지                       |
+| -------------- | ----------- | ---------------------------- |
+| 계좌 없음      | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
+| 본인 계좌 아님 | ACCOUNT_002 | 본인 계좌가 아닙니다         |
+
+---
+
+## STOCK-CASH-002. 예수금 출금
+
+**POST** `/accounts/{accountId}/cash/withdraw`
+
+> Write API — Saga compensation step (rollback용)
+
+### Request Body
+
+```json
+{
+  "amount": 500000,
+  "sagaId": 1001
+}
+```
+
+### Request Fields
+
+| 필드    | 타입    | 필수 | 설명                    |
+| ------- | ------- | ---- | ----------------------- |
+| amount  | Decimal | O    | 출금 금액 (0 초과)      |
+| sagaId  | Long    | X    | Saga 추적 ID (로깅용)   |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "accountId": 2001,
+    "cashBalance": 10000000
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+### Error Cases
+
+| 상황           | 코드         | 메시지                       |
+| -------------- | ------------ | ---------------------------- |
+| 계좌 없음      | ACCOUNT_001  | 해당 계좌를 찾을 수 없습니다 |
+| 본인 계좌 아님 | ACCOUNT_002  | 본인 계좌가 아닙니다         |
+| 잔액 부족      | TRANSFER_002 | 잔액이 부족합니다            |
