@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -65,5 +66,14 @@ public class GlobalExceptionHandler {
         e.getMessage());
     return ResponseEntity.status(e.getStatus())
         .body(ApiResponse.fail(e.getCode(), e.getMessage(), traceId));
+  }
+
+  @ExceptionHandler(DuplicateRequestInProgressException.class)
+  public ResponseEntity<ApiResponse<Void>> handleDuplicateRequestInProgressException(
+      DuplicateRequestInProgressException e, HttpServletRequest request) {
+    String traceId = (String) request.getAttribute("traceId");
+    log.warn("[GlobalExceptionHandler] 처리 중인 중복 요청: key={}", e.getIdempotencyKey());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ApiResponse.fail("IDEMPOTENCY_001", e.getMessage(), traceId));
   }
 }
