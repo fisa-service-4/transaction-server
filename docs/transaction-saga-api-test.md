@@ -2,17 +2,18 @@
 
 > **Transaction Server** `localhost:8083`
 > 모든 이체 요청은 `POST /baas/v1/bank/transfers` 단일 엔드포인트로 진입합니다.
-> transaction-server가 `fromAccountId` 계좌 유형과 `toAccountNumber`를 분석해 내부적으로 라우팅합니다.
+> transaction-server가 `fromAccountId` 계좌 유형 + `toBankCode` 조합으로 내부 라우팅합니다.
 
 ---
 
 ## 라우팅 기준
 
-| 조건 | 내부 처리 |
-|---|---|
-| `fromAccountId` = 증권 계좌 (`STOCK` 매핑) | **STOCK_TO_BANK** Saga |
-| `fromAccountId` = 은행 계좌 + `toAccountNumber`가 본인 증권 계좌번호 일치 | **BANK_TO_STOCK** Saga |
-| 그 외 | **기존 bank-to-bank** 이체 |
+| fromAccountId 타입 | toBankCode | 내부 처리 |
+|---|---|---|
+| BANK (`020`, `088`) | 증권사 코드 (`243`, `247`) | **BANK_TO_STOCK** Saga |
+| STOCK (`243`, `247`) | 은행 코드 (`020`, `088`) | **STOCK_TO_BANK** Saga |
+| BANK | 은행 코드 | **bank-to-bank** 이체 |
+| STOCK | 증권사 코드 | 미지원 (`SAGA_003`) |
 
 ---
 
@@ -39,14 +40,12 @@
 
 ### 은행 계좌 (bank-server DB)
 
-| accountId | 계좌명 | 계좌번호 | 초기 잔액 |
-|---|---|---|---|
-| `1077` | INCOME통장 | `110-111-000074` | 5,000,000원 |
-| `1078` | SALARY통장 | `110-111-000075` | 1,200,000원 |
-| `1079` | EMERGENCY통장 | `110-111-000076` | 1,200,000원 |
-| `1080` | INVEST통장 | `110-111-000077` | 1,200,000원 |
-
-> 은행 코드: `777`
+| accountId | 계좌명 | 계좌번호 | bank_code | 은행 | 초기 잔액 |
+|---|---|---|---|---|---|
+| `1077` | INCOME통장 | `110-111-000074` | `020` | 우리은행 | 5,000,000원 |
+| `1078` | SALARY통장 | `110-111-000075` | `020` | 우리은행 | 1,200,000원 |
+| `1079` | EMERGENCY통장 | `110-111-000076` | `020` | 우리은행 | 1,200,000원 |
+| `1080` | INVEST통장 | `110-111-000077` | `088` | 신한은행 | 1,200,000원 |
 
 ### 증권 계좌 (stock-server DB)
 
@@ -54,12 +53,10 @@
 |---|---|
 | accountId | `25` |
 | 계좌번호 | `300-777-000071` |
-| broker_code | `039` |
+| broker_code | `243` (한국투자증권) |
 | 초기 예수금 | 50,000,000원 |
 
 ### transaction-server DB 계좌 매핑
-
-> 수동 삽입 SQL은 아래를 참고합니다.
 
 ```sql
 -- user_master
@@ -119,7 +116,7 @@ COMMIT;
 
 # SAGA-1. BANK_TO_STOCK — 은행 → 증권 예수금 충전
 
-> `fromAccountId`가 은행 계좌이고 `toAccountNumber`가 본인 증권 계좌번호와 일치하면 BANK_TO_STOCK Saga가 실행됩니다.
+> `fromAccountId`가 BANK 계좌이고 `toBankCode`가 증권사 코드(`243`, `247`)이면 BANK_TO_STOCK Saga가 실행됩니다.
 >
 > **내부 흐름:**
 > 1. STEP 1 — bank-server: 이체 레코드 생성 (잔액 변동 없음, REQUESTED)
@@ -136,7 +133,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 1077,
-    "toBankCode": "039",
+    "toBankCode": "243",
     "toAccountNumber": "300-777-000071",
     "transferAmount": 500000,
     "requestedBy": "USER"
@@ -207,7 +204,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 1077,
-    "toBankCode": "039",
+    "toBankCode": "243",
     "toAccountNumber": "300-777-000071",
     "transferAmount": 100000,
     "requestedBy": "USER"
@@ -219,7 +216,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 1077,
-    "toBankCode": "039",
+    "toBankCode": "243",
     "toAccountNumber": "300-777-000071",
     "transferAmount": 100000,
     "requestedBy": "USER"
@@ -229,7 +226,6 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
 **검증 포인트:** 두 응답의 `transferId`가 동일한지, saga_transaction이 1건만 생성됐는지 확인
 
 ```sql
--- idempotency_key 저장 확인
 SELECT idempotency_key, request_type, status
 FROM idempotency_key
 WHERE idempotency_key = 'saga-bts-idem-001';
@@ -239,15 +235,13 @@ WHERE idempotency_key = 'saga-bts-idem-001';
 
 ## SAGA-BTS-003. 에러 케이스 — 잔액 부족
 
-> 보유 잔액보다 큰 금액 요청 시 STEP 1(이체 레코드 생성) 또는 STEP 3(approve) 단계에서 실패합니다.
-
 ```bash
 curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Idempotency-Key: saga-bts-fail-001" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 1077,
-    "toBankCode": "039",
+    "toBankCode": "243",
     "toAccountNumber": "300-777-000071",
     "transferAmount": 99999999,
     "requestedBy": "USER"
@@ -271,7 +265,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 1077,
-    "toBankCode": "039",
+    "toBankCode": "243",
     "toAccountNumber": "300-777-000071",
     "transferAmount": 100000,
     "requestedBy": "USER"
@@ -282,7 +276,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
 
 # SAGA-2. STOCK_TO_BANK — 증권 예수금 → 은행 입금
 
-> `fromAccountId`가 증권 계좌로 매핑되어 있으면 STOCK_TO_BANK Saga가 실행됩니다.
+> `fromAccountId`가 STOCK 계좌이고 `toBankCode`가 은행 코드(`020`, `088`)이면 STOCK_TO_BANK Saga가 실행됩니다.
 >
 > **내부 흐름:**
 > 1. STEP 1 — stock-server: 예수금 차감 (`cash_balance` 감소)
@@ -299,7 +293,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 25,
-    "toBankCode": "777",
+    "toBankCode": "020",
     "toAccountNumber": "110-111-000074",
     "transferAmount": 300000,
     "requestedBy": "USER"
@@ -338,7 +332,7 @@ ORDER BY step_order;
 **사후 검증 — stock-server DB:**
 
 ```sql
--- 예수금 차감 확인 (이전 잔액 - 300,000)
+-- 예수금 차감 확인 (50,000,000 - 300,000 = 49,700,000)
 SELECT securities_account_id, cash_balance
 FROM securities_account
 WHERE account_number = '300-777-000071';
@@ -347,7 +341,7 @@ WHERE account_number = '300-777-000071';
 **사후 검증 — bank-server DB:**
 
 ```sql
--- 입금 확인 (1077 계좌 잔액 증가)
+-- 입금 확인 (1077 잔액 증가)
 SELECT account_id, balance FROM bank_account WHERE account_id = 1077;
 ```
 
@@ -362,7 +356,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 25,
-    "toBankCode": "777",
+    "toBankCode": "020",
     "toAccountNumber": "110-111-000074",
     "transferAmount": 100000,
     "requestedBy": "USER"
@@ -374,7 +368,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 25,
-    "toBankCode": "777",
+    "toBankCode": "020",
     "toAccountNumber": "110-111-000074",
     "transferAmount": 100000,
     "requestedBy": "USER"
@@ -391,7 +385,7 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 25,
-    "toBankCode": "777",
+    "toBankCode": "020",
     "toAccountNumber": "110-111-000074",
     "transferAmount": 999999999,
     "requestedBy": "USER"
@@ -405,7 +399,6 @@ SELECT saga_id, saga_status, failure_reason
 FROM saga_transaction
 WHERE transaction_key = 'saga-stb-fail-001';
 
--- step_status FAILED 확인 (STOCK_CASH_WITHDRAW)
 SELECT step_name, step_status, error_message
 FROM saga_step_history
 WHERE saga_id = (
@@ -415,13 +408,14 @@ WHERE saga_id = (
 
 ---
 
-# SAGA-3. Bank-to-Bank — 기존 은행 내부 이체
+# SAGA-3. Bank-to-Bank — 은행 간 이체
 
-> `fromAccountId`가 은행 계좌이고 `toAccountNumber`가 증권 계좌번호와 일치하지 않으면 기존 bank-to-bank 이체로 처리됩니다.
+> `fromAccountId`가 BANK 계좌이고 `toBankCode`가 은행 코드(`020`, `088`)이면 bank-to-bank 이체로 처리됩니다.
+> Saga 없이 bank-server가 직접 처리합니다.
 
 ---
 
-## BANK-TRANSFER-001. 정상 흐름 — 은행 계좌 간 이체
+## BANK-TRANSFER-001. 정상 흐름 — 우리은행 → 신한은행 이체 (1077 → 1080)
 
 ```bash
 curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
@@ -429,27 +423,40 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Content-Type: application/json" \
   -d '{
     "fromAccountId": 1077,
-    "toBankCode": "777",
-    "toAccountNumber": "110-111-000075",
+    "toBankCode": "088",
+    "toAccountNumber": "110-111-000077",
     "transferAmount": 200000,
     "requestedBy": "USER"
   }' | jq .
 ```
 
-> Saga 없이 bank-server가 직접 처리합니다. `saga_transaction` 레코드가 생성되지 않습니다.
-
 **사후 검증:**
 
 ```sql
--- transfer_user_mapping 생성 확인
+-- transfer_user_mapping 생성 확인 (saga_transaction 레코드 없음)
 SELECT transfer_id, x_user_id FROM transfer_user_mapping ORDER BY transfer_id DESC FETCH FIRST 1 ROWS ONLY;
 ```
 
 ---
 
-## BANK-TRANSFER-002. 이체 결과 조회
+## BANK-TRANSFER-002. 정상 흐름 — 같은 은행 간 이체 (1077 → 1078)
 
-> `transferId`는 BANK-TRANSFER-001 응답에서 확인
+```bash
+curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
+  -H "Idempotency-Key: bank-btb-002" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fromAccountId": 1077,
+    "toBankCode": "020",
+    "toAccountNumber": "110-111-000075",
+    "transferAmount": 100000,
+    "requestedBy": "USER"
+  }' | jq .
+```
+
+---
+
+## BANK-TRANSFER-003. 이체 결과 조회
 
 ```bash
 TRANSFER_ID=<이체 응답의 transferId>
@@ -461,14 +468,11 @@ curl -s -X GET "http://localhost:8083/baas/v1/bank/transfers/${TRANSFER_ID}" | j
 
 # SAGA-4. DB 상태 전체 조회
 
-> 테스트 진행 후 Saga 상태를 한눈에 확인하는 쿼리 모음입니다.
-
 ---
 
 ## 전체 Saga 목록
 
 ```sql
--- transaction-server DB
 SELECT saga_id,
        transaction_type,
        transaction_key,
@@ -484,7 +488,6 @@ ORDER BY started_at DESC;
 ## 특정 Saga 단계 이력
 
 ```sql
--- <saga_id>를 실제 값으로 교체
 SELECT step_name,
        step_order,
        step_status,
@@ -547,11 +550,13 @@ ORDER BY created_at DESC;
 
 | 코드 | 상황 | 발생 케이스 |
 |---|---|---|
+| `ACCOUNT_001` | 유효하지 않은 계좌 | validate 결과 validYn: false |
 | `MAPPING_001` | accountId에 해당하는 user_account_mapping 없음 | fromAccountId가 매핑 안 된 경우 |
 | `TRANSFER_002` | 잔액 부족 | bank 출금 / stock 예수금 부족 |
 | `SAGA_001` | Saga 처리 실패 | 각 Step 실패 |
-| `SAGA_002` | 증권 계좌 없음 | toAccountNumber가 본인 증권 계좌와 불일치 |
-| `DUPLICATE_REQUEST` | 동일 Idempotency-Key 처리 중 중복 요청 | 처리 중인 키로 재요청 |
+| `SAGA_002` | 증권 계좌 조회 실패 | resolveStockAccountNumber 실패 |
+| `SAGA_003` | 미지원 이체 유형 | STOCK → STOCK 요청 |
+| `DUPLICATE_REQUEST` | 처리 중인 키로 중복 요청 | 동일 Idempotency-Key 재요청 |
 | `BANK_CORE_ERROR` | bank-server 내부 오류 | bank-server 장애 |
 | `STOCK_CORE_ERROR` | stock-server 내부 오류 | stock-server 장애 |
 
@@ -560,31 +565,31 @@ ORDER BY created_at DESC;
 # 추천 테스트 순서
 
 ```
-[BANK_TO_STOCK 흐름]
+[BANK_TO_STOCK 흐름] fromAccountId=1077(BANK/020) → toBankCode=243(증권)
 1.  SAGA-BTS-001  → 정상 BANK_TO_STOCK (500,000원)
                     bank 1077 잔액: 5,000,000 → 4,500,000 확인
                     stock 25 예수금: 50,000,000 → 50,500,000 확인
-                    saga_transaction: SUCCESS 확인
-                    saga_step_history: 3건 SUCCESS 확인
-2.  SAGA-BTS-002  → 동일 키(saga-bts-idem-001) 재요청 → 동일 transferId 반환 확인
-3.  SAGA-BTS-003  → 잔액 부족 → saga_transaction FAILED 확인
+                    saga_transaction: SUCCESS, saga_step_history: 3건 확인
+2.  SAGA-BTS-002  → 동일 키 재요청 → 동일 transferId 반환, saga 1건만 생성 확인
+3.  SAGA-BTS-003  → 잔액 부족(99,999,999) → saga_transaction FAILED 확인
 
-[STOCK_TO_BANK 흐름]
+[STOCK_TO_BANK 흐름] fromAccountId=25(STOCK/243) → toBankCode=020(우리은행)
 4.  SAGA-STB-001  → 정상 STOCK_TO_BANK (300,000원)
-                    stock 25 예수금 차감 확인
+                    stock 25 예수금: 50,000,000 → 49,700,000 확인
                     bank 1077 잔액 증가 확인
                     saga_transaction: STOCK_TO_BANK, SUCCESS 확인
-5.  SAGA-STB-002  → 동일 키(saga-stb-idem-001) 재요청 → 동일 transferId 반환 확인
+5.  SAGA-STB-002  → 동일 키 재요청 → 동일 transferId 반환 확인
 6.  SAGA-STB-003  → 예수금 부족 → saga_transaction FAILED 확인 (보상 없음)
 
 [Bank-to-Bank 이체]
-7.  BANK-TRANSFER-001 → 1077 → 1078 이체 (200,000원)
-                          saga_transaction 생성 없음 확인
-8.  BANK-TRANSFER-002 → 이체 결과 조회
+7.  BANK-TRANSFER-001 → 1077(우리) → 1080(신한) 이체 (200,000원)
+                         saga_transaction 레코드 없음 확인
+8.  BANK-TRANSFER-002 → 1077(우리) → 1078(우리) 이체 (100,000원)
+9.  BANK-TRANSFER-003 → 이체 결과 조회
 
 [공통 사후 검증]
-9.  Outbox 이벤트 발행 현황 조회 (saga.started / saga.completed 확인)
-10. 감사 로그 조회 (BANK_TO_STOCK / STOCK_TO_BANK 기록 확인)
+10. Outbox 이벤트 발행 현황 조회 (saga.started / saga.completed 확인)
+11. 감사 로그 조회 (BANK_TO_STOCK / STOCK_TO_BANK 기록 확인)
 ```
 
 ---
@@ -592,19 +597,27 @@ ORDER BY created_at DESC;
 ## Windows PowerShell 참고
 
 ```powershell
-# BANK_TO_STOCK 정상 이체
+# BANK_TO_STOCK: 1077(우리은행) → 증권 300-777-000071
 curl.exe -s -X POST "http://localhost:8083/baas/v1/bank/transfers" `
   -H "Idempotency-Key: saga-bts-001" `
   -H "Content-Type: application/json" `
-  -d '{\"fromAccountId\":1077,\"toBankCode\":\"039\",\"toAccountNumber\":\"300-777-000071\",\"transferAmount\":500000,\"requestedBy\":\"USER\"}'
+  -d '{\"fromAccountId\":1077,\"toBankCode\":\"243\",\"toAccountNumber\":\"300-777-000071\",\"transferAmount\":500000,\"requestedBy\":\"USER\"}'
 ```
 
 ```powershell
-# STOCK_TO_BANK 정상 이체
+# STOCK_TO_BANK: 증권 25 → 우리은행 110-111-000074
 curl.exe -s -X POST "http://localhost:8083/baas/v1/bank/transfers" `
   -H "Idempotency-Key: saga-stb-001" `
   -H "Content-Type: application/json" `
-  -d '{\"fromAccountId\":25,\"toBankCode\":\"777\",\"toAccountNumber\":\"110-111-000074\",\"transferAmount\":300000,\"requestedBy\":\"USER\"}'
+  -d '{\"fromAccountId\":25,\"toBankCode\":\"020\",\"toAccountNumber\":\"110-111-000074\",\"transferAmount\":300000,\"requestedBy\":\"USER\"}'
+```
+
+```powershell
+# bank-to-bank: 우리은행 1077 → 신한은행 1080
+curl.exe -s -X POST "http://localhost:8083/baas/v1/bank/transfers" `
+  -H "Idempotency-Key: bank-btb-001" `
+  -H "Content-Type: application/json" `
+  -d '{\"fromAccountId\":1077,\"toBankCode\":\"088\",\"toAccountNumber\":\"110-111-000077\",\"transferAmount\":200000,\"requestedBy\":\"USER\"}'
 ```
 
 ```powershell
