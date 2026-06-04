@@ -11,12 +11,10 @@ import com.transaction.domain.saga.enums.SagaStepStatus;
 import com.transaction.domain.saga.enums.SagaType;
 import com.transaction.domain.stock.client.StockCoreClient;
 import com.transaction.domain.stock.dto.request.StockCashRequest;
-import com.transaction.domain.stock.dto.response.BaasStockAccountItemResponse;
 import com.transaction.global.exception.SagaException;
 import com.transaction.global.service.AuditService;
 import com.transaction.global.service.IdempotencyService;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,13 +33,25 @@ public class SagaOrchestrator {
     private final ObjectMapper objectMapper;
 
     // ==================== BANK_TO_STOCK ====================
+    //
+    // 흐름: bank 이체 레코드 생성(STEP1) → stock 예수금 충전(STEP2) → bank 이체 확정(STEP3)
+    //
+    // STEP2를 STEP3보다 먼저 실행하는 이유:
+    //   approve(STEP3)가 실패하면 stock deposit을 보상(차감)할 수 있음.
+    //   반대로 approve 먼저 실행하면 bank 출금이 완료된 상태에서 stock deposit 실패 시
+    //   bank 원복 수단이 없음 — 따라서 reversible한 stock deposit을 먼저 수행.
+    //
+    // 실패 시나리오:
+    //   Case A: STEP2(stock deposit) 실패 → bank transfer REQUESTED 상태(잔액 변동 없음) → cancel 호출로 명시적 종료
+    //   Case B: STEP3(bank approve) 실패 → stock deposit 이미 반영됨 → stock withdraw 보상 트랜잭션 실행
+    //   UNKNOWN: STEP3 timeout → bank 상태 조회로 판단 → SUCCESS면 그대로, REQUESTED면 Case B 보상
 
     public BaasTransferCreateResponse bankToStock(
             BaasTransferRequest request,
             String idempotencyKey,
             Long xUserId,
             String traceId,
-            Long toStockAccountId) {
+            String toAccountNumber) {
 
         Optional<String> cached = idempotencyService.check(idempotencyKey, toJson(request), "BANK_TO_STOCK");
         if (cached.isPresent()) {
@@ -55,6 +65,7 @@ public class SagaOrchestrator {
         Long transferId = null;
 
         // ─── STEP 1: BANK_TRANSFER_REQUEST_CREATED ───────────────────────
+        // 이체 레코드만 생성. 잔액 변동 없음 (approve 시점에 실제 출금)
         try {
             var createResp = bankCoreClient
                     .createTransfer(xUserId, traceId, idempotencyKey, request)
@@ -75,10 +86,11 @@ public class SagaOrchestrator {
         }
 
         // ─── STEP 2: STOCK_CASH_DEPOSIT ──────────────────────────────────
+        // 실패 시(Case A): bank transfer가 REQUESTED 상태이므로 잔액 변동 없음 → cancel 호출로 정리
         String depositKey = saga.getSagaId() + "_DEPOSIT";
-        StockCashRequest cashReq = new StockCashRequest(request.getTransferAmount().longValue());
+        StockCashRequest cashReq = new StockCashRequest(toAccountNumber, request.getTransferAmount().longValue());
         try {
-            stockCoreClient.depositCash(xUserId, traceId, depositKey, toStockAccountId, cashReq);
+            stockCoreClient.depositCash(xUserId, traceId, depositKey, cashReq);
             sagaStateManager.recordStep(saga.getSagaId(),
                     SagaStepName.STOCK_CASH_DEPOSIT, 2, SagaStepStatus.SUCCESS,
                     toJson(cashReq), null, null);
@@ -96,7 +108,7 @@ public class SagaOrchestrator {
 
         // ─── STEP 3: BANK_TRANSFER_COMMIT ────────────────────────────────
         return executeApproveStep(request, saga.getSagaId(), idempotencyKey,
-                xUserId, traceId, transferId, toStockAccountId,
+                xUserId, traceId, transferId, toAccountNumber,
                 request.getTransferAmount().longValue());
     }
 
@@ -107,7 +119,7 @@ public class SagaOrchestrator {
             Long xUserId,
             String traceId,
             Long transferId,
-            Long toStockAccountId,
+            String toAccountNumber,
             Long amount) {
 
         try {
@@ -125,15 +137,16 @@ public class SagaOrchestrator {
             return result;
 
         } catch (Exception approveEx) {
+            // approve 예외 발생 시 즉시 실패로 처리하지 않고 bank 상태를 직접 조회해서 판단.
+            // 네트워크 timeout인 경우 bank가 실제로 처리를 완료했을 수 있기 때문.
             log.warn("[Saga-BTS] STEP 3 exception: sagaId={}, error={}", sagaId, approveEx.getMessage());
-            // approve 결과 불명 → 상태 조회로 판단
             try {
                 BaasTransferDetailResponse status =
                         bankCoreClient.getTransfer(xUserId, traceId, transferId).getData();
                 String transferStatus = status.getTransferStatus();
 
                 if ("SUCCESS".equals(transferStatus) || "COMPLETED".equals(transferStatus)) {
-                    // bank가 실제로 처리 완료
+                    // bank가 실제로 처리 완료 → Saga SUCCESS로 확정
                     log.info("[Saga-BTS] STEP 3 recovered (bank SUCCESS): sagaId={}", sagaId);
                     sagaStateManager.recordStep(sagaId,
                             SagaStepName.BANK_TRANSFER_COMMIT, 3, SagaStepStatus.SUCCESS,
@@ -145,14 +158,15 @@ public class SagaOrchestrator {
                     return result;
 
                 } else {
-                    // REQUESTED or FAILED → Case B: 보상
+                    // bank가 REQUESTED 상태 → 출금 미처리, stock deposit은 이미 반영됨 → Case B 보상
                     log.warn("[Saga-BTS] STEP 3 FAILED (Case B): sagaId={}, bankStatus={}", sagaId, transferStatus);
                     return compensateBankToStock(sagaId, idempotencyKey, xUserId, traceId,
-                            transferId, toStockAccountId, amount, approveEx.getMessage());
+                            transferId, toAccountNumber, amount, approveEx.getMessage());
                 }
 
             } catch (Exception queryEx) {
-                // 상태 조회도 실패 → UNKNOWN
+                // 상태 조회마저 실패 → bank 처리 여부 불명 (UNKNOWN)
+                // stock deposit과 bank approve 양쪽 모두 결과 불확실 → 수동 개입 필요
                 log.error("[Saga-BTS] STEP 3 UNKNOWN: sagaId={}, queryError={}", sagaId, queryEx.getMessage());
                 sagaStateManager.recordStep(sagaId,
                         SagaStepName.BANK_TRANSFER_COMMIT, 3, SagaStepStatus.FAILED,
@@ -167,7 +181,7 @@ public class SagaOrchestrator {
     private BaasTransferCreateResponse compensateBankToStock(
             Long sagaId, String idempotencyKey,
             Long xUserId, String traceId,
-            Long transferId, Long toStockAccountId, Long amount, String originalError) {
+            Long transferId, String toAccountNumber, Long amount, String originalError) {
 
         sagaStateManager.recordStep(sagaId,
                 SagaStepName.BANK_TRANSFER_COMMIT, 3, SagaStepStatus.FAILED,
@@ -177,8 +191,8 @@ public class SagaOrchestrator {
 
         try {
             String withdrawKey = sagaId + "_COMPENSATION_WITHDRAW";
-            StockCashRequest withdrawReq = new StockCashRequest(amount);
-            stockCoreClient.withdrawCash(xUserId, traceId, withdrawKey, toStockAccountId, withdrawReq);
+            StockCashRequest withdrawReq = new StockCashRequest(toAccountNumber, amount);
+            stockCoreClient.withdrawCash(xUserId, traceId, withdrawKey, withdrawReq);
             sagaStateManager.recordStep(sagaId,
                     SagaStepName.STOCK_CASH_WITHDRAW_COMPENSATION, 4, SagaStepStatus.COMPENSATED,
                     toJson(withdrawReq), null, null);
@@ -194,12 +208,18 @@ public class SagaOrchestrator {
     }
 
     // ==================== STOCK_TO_BANK ====================
+    //
+    // 흐름: stock 예수금 차감(STEP1) → bank 이체 레코드 생성(STEP2) → bank 이체 확정(STEP3)
+    //
+    // STEP1 실패: stock 변동 없음, bank 미호출 → 보상 없이 FAILED 종료
+    // STEP2/3 실패: stock 예수금 이미 차감됨 → stock deposit 보상 트랜잭션으로 원복
 
     public BaasTransferCreateResponse stockToBank(
             BaasTransferRequest request,
             String idempotencyKey,
             Long xUserId,
-            String traceId) {
+            String traceId,
+            String fromAccountNumber) {
 
         Optional<String> cached = idempotencyService.check(idempotencyKey, toJson(request), "STOCK_TO_BANK");
         if (cached.isPresent()) {
@@ -210,13 +230,11 @@ public class SagaOrchestrator {
                 SagaType.STOCK_TO_BANK, idempotencyKey,
                 String.format("{\"sagaType\":\"STOCK_TO_BANK\",\"amount\":%s}", request.getTransferAmount()));
 
-        Long fromStockAccountId = request.getFromAccountId();
-
         // ─── STEP 1: STOCK_CASH_WITHDRAW ─────────────────────────────────
         String withdrawKey = saga.getSagaId() + "_WITHDRAW";
-        StockCashRequest withdrawReq = new StockCashRequest(request.getTransferAmount().longValue());
+        StockCashRequest withdrawReq = new StockCashRequest(fromAccountNumber, request.getTransferAmount().longValue());
         try {
-            stockCoreClient.withdrawCash(xUserId, traceId, withdrawKey, fromStockAccountId, withdrawReq);
+            stockCoreClient.withdrawCash(xUserId, traceId, withdrawKey, withdrawReq);
             sagaStateManager.recordStep(saga.getSagaId(),
                     SagaStepName.STOCK_CASH_WITHDRAW, 1, SagaStepStatus.SUCCESS,
                     toJson(withdrawReq), null, null);
@@ -249,12 +267,12 @@ public class SagaOrchestrator {
                     SagaStepName.BANK_TRANSFER_REQUEST_CREATED, 2, SagaStepStatus.FAILED,
                     toJson(request), null, e.getMessage());
             return compensateStockToBank(saga.getSagaId(), idempotencyKey, xUserId, traceId,
-                    fromStockAccountId, request.getTransferAmount().longValue(), e.getMessage());
+                    fromAccountNumber, request.getTransferAmount().longValue(), e.getMessage());
         }
 
         // ─── STEP 3: BANK_TRANSFER_COMMIT ────────────────────────────────
         return executeApproveStepStockToBank(request, saga.getSagaId(), idempotencyKey,
-                xUserId, traceId, transferId, fromStockAccountId,
+                xUserId, traceId, transferId, fromAccountNumber,
                 request.getTransferAmount().longValue());
     }
 
@@ -265,7 +283,7 @@ public class SagaOrchestrator {
             Long xUserId,
             String traceId,
             Long transferId,
-            Long fromStockAccountId,
+            String fromAccountNumber,
             Long amount) {
 
         try {
@@ -302,7 +320,7 @@ public class SagaOrchestrator {
                 } else {
                     log.warn("[Saga-STB] STEP 3 FAILED, compensating: sagaId={}", sagaId);
                     return compensateStockToBank(sagaId, idempotencyKey, xUserId, traceId,
-                            fromStockAccountId, amount, approveEx.getMessage());
+                            fromAccountNumber, amount, approveEx.getMessage());
                 }
 
             } catch (Exception queryEx) {
@@ -320,15 +338,15 @@ public class SagaOrchestrator {
     private BaasTransferCreateResponse compensateStockToBank(
             Long sagaId, String idempotencyKey,
             Long xUserId, String traceId,
-            Long fromStockAccountId, Long amount, String originalError) {
+            String fromAccountNumber, Long amount, String originalError) {
 
         sagaStateManager.startCompensation(sagaId,
                 String.format("{\"sagaId\":%d,\"compensatingStep\":\"STOCK_DEPOSIT\"}", sagaId));
 
         try {
             String depositKey = sagaId + "_COMPENSATION_DEPOSIT";
-            StockCashRequest depositReq = new StockCashRequest(amount);
-            stockCoreClient.depositCash(xUserId, traceId, depositKey, fromStockAccountId, depositReq);
+            StockCashRequest depositReq = new StockCashRequest(fromAccountNumber, amount);
+            stockCoreClient.depositCash(xUserId, traceId, depositKey, depositReq);
             sagaStateManager.recordStep(sagaId,
                     SagaStepName.STOCK_CASH_DEPOSIT_COMPENSATION, 4, SagaStepStatus.COMPENSATED,
                     toJson(depositReq), null, null);
@@ -344,18 +362,6 @@ public class SagaOrchestrator {
     }
 
     // ==================== helpers ====================
-
-    public Long findStockAccountId(Long xUserId, String traceId, String toAccountNumber) {
-        List<BaasStockAccountItemResponse> accounts =
-                stockCoreClient.getStockAccounts(xUserId, traceId).getData().getContent();
-        return accounts.stream()
-                .filter(a -> toAccountNumber.equals(a.getAccountNumber()))
-                .findFirst()
-                .map(BaasStockAccountItemResponse::getAccountId)
-                .orElseThrow(() -> new SagaException(
-                        "SAGA_002", "증권 계좌를 찾을 수 없습니다: " + toAccountNumber,
-                        org.springframework.http.HttpStatus.BAD_REQUEST));
-    }
 
     private void tryCancelTransfer(Long xUserId, String traceId, Long transferId, Long sagaId) {
         try {

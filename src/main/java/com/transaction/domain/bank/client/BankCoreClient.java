@@ -1,6 +1,8 @@
 package com.transaction.domain.bank.client;
 
+import com.transaction.domain.bank.dto.request.AccountValidateRequest;
 import com.transaction.domain.bank.dto.request.BaasTransferRequest;
+import com.transaction.domain.bank.dto.response.AccountValidateResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountBalanceResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
@@ -64,6 +66,12 @@ public interface BankCoreClient {
       @PathVariable("accountId") Long accountId,
       @RequestParam String fromDate,
       @RequestParam String toDate);
+
+  @PostMapping("/internal/v1/bank/accounts/validate")
+  ApiResponse<AccountValidateResponse> validateAccount(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @RequestBody AccountValidateRequest request);
 
   @PostMapping("/internal/v1/bank/transfers")
   ApiResponse<BaasTransferCreateResponse> createTransfer(
