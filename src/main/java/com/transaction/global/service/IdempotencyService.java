@@ -1,6 +1,7 @@
 package com.transaction.global.service;
 
 import com.transaction.global.entity.IdempotencyKey;
+import com.transaction.global.exception.DuplicateRequestInProgressException;
 import com.transaction.global.repository.IdempotencyKeyRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,9 @@ public class IdempotencyService {
         if (existing.isPresent()) {
             IdempotencyKey ik = existing.get();
             log.info("[IdempotencyService] 중복 요청 감지: key={}, status={}", key, ik.getStatus());
+            if (ik.isProcessing()) {
+                throw new DuplicateRequestInProgressException(key);
+            }
             return Optional.ofNullable(ik.getResponsePayload());
         }
         idempotencyKeyRepository.save(IdempotencyKey.create(key, requestHash, requestType));
