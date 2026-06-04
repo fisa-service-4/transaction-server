@@ -43,3 +43,7 @@ broker:
   codes:
     - "243"
     - "247"
+  settlement-accounts:
+    "243": 2439999
+    "247": 2479999
+  settlement-x-user-id: 999999

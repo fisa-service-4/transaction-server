@@ -59,7 +59,6 @@ public class BaasTransferService {
       Long xUserId = userResolver.resolveByAccount(fromAccountId, "STOCK");
       log.info("[BaasTransferService] STOCK_TO_BANK 라우팅: xUserId={}, traceId={}", xUserId, traceId);
 
-      // validate API가 4xx를 반환하면 Feign 예외로 전파되지만, validYn으로 한 번 더 명시적으로 확인
       AccountValidateResponse bankValidate =
           bankCoreClient
               .validateAccount(
@@ -69,12 +68,29 @@ public class BaasTransferService {
         throw new SagaException("ACCOUNT_001", "유효하지 않은 은행 계좌입니다.", HttpStatus.BAD_REQUEST);
       }
 
-      // stock-server deposit/withdraw는 accountNumber 기반이므로 accountId → accountNumber 변환 필요
-      // user_account_mapping에 accountNumber가 없어서 stock-server 계좌 목록 조회 후 필터링
-      String fromAccountNumber = resolveStockAccountNumber(xUserId, traceId, fromAccountId);
+      // stock-server deposit/withdraw는 accountNumber 기반 — accountId → accountNumber + brokerCode 변환
+      BaasStockAccountItemResponse stockAccount =
+          resolveStockAccount(xUserId, traceId, fromAccountId);
+      String fromAccountNumber = stockAccount.getAccountNumber();
+      String brokerCode = stockAccount.getBankCode();
+
+      // 증권사 코드 기반 정산 계좌 조회 (243 → 2439999, 247 → 2479999)
+      Long settlementAccountId = brokerCodeProperties.getSettlementAccountId(brokerCode);
+      if (settlementAccountId == null) {
+        throw new SagaException(
+            "SAGA_004", "정산 계좌가 설정되지 않은 증권사입니다: " + brokerCode, HttpStatus.BAD_REQUEST);
+      }
+
+      Long settlementXUserId = brokerCodeProperties.getSettlementXUserId();
       BaasTransferCreateResponse result =
           sagaOrchestrator.stockToBank(
-              request, idempotencyKey, xUserId, traceId, fromAccountNumber);
+              request,
+              idempotencyKey,
+              xUserId,
+              traceId,
+              fromAccountNumber,
+              settlementAccountId,
+              settlementXUserId);
       return ApiResponse.success(result, traceId);
     }
 
@@ -163,12 +179,12 @@ public class BaasTransferService {
     return userAccountMappingRepository.existsById(new UserAccountMappingId(accountId, "STOCK"));
   }
 
-  // fromAccountId(Long) → fromAccountNumber(String) 변환 — STOCK_TO_BANK 전용
-  private String resolveStockAccountNumber(Long xUserId, String traceId, Long fromAccountId) {
+  // fromAccountId → BaasStockAccountItemResponse 변환 — STOCK_TO_BANK 전용
+  private BaasStockAccountItemResponse resolveStockAccount(
+      Long xUserId, String traceId, Long fromAccountId) {
     return stockCoreClient.getStockAccounts(xUserId, traceId).getData().getContent().stream()
         .filter(a -> fromAccountId.equals(a.getAccountId()))
         .findFirst()
-        .map(BaasStockAccountItemResponse::getAccountNumber)
         .orElseThrow(
             () -> new SagaException("SAGA_002", "증권 계좌를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST));
   }

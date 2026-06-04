@@ -310,7 +310,9 @@ public class SagaOrchestrator {
       String idempotencyKey,
       Long xUserId,
       String traceId,
-      String fromAccountNumber) {
+      String fromAccountNumber,
+      Long settlementAccountId,
+      Long settlementXUserId) {
 
     Optional<String> cached =
         idempotencyService.check(idempotencyKey, toJson(request), "STOCK_TO_BANK");
@@ -358,16 +360,27 @@ public class SagaOrchestrator {
     Long transferId = null;
 
     // ─── STEP 2: BANK_TRANSFER_REQUEST_CREATED ───────────────────────
+    // 정산 계좌(settlementAccountId)를 fromAccountId로 사용 — stock 계좌 ID는 bank-server가 모름
+    BaasTransferRequest bankRequest =
+        BaasTransferRequest.builder()
+            .fromAccountId(settlementAccountId)
+            .toBankCode(request.getToBankCode())
+            .toAccountNumber(request.getToAccountNumber())
+            .transferAmount(request.getTransferAmount())
+            .requestedBy(request.getRequestedBy())
+            .build();
     try {
       var createResp =
-          bankCoreClient.createTransfer(xUserId, traceId, idempotencyKey, request).getData();
+          bankCoreClient
+              .createTransfer(settlementXUserId, traceId, idempotencyKey, bankRequest)
+              .getData();
       transferId = createResp.getTransferId();
       sagaStateManager.recordStep(
           saga.getSagaId(),
           SagaStepName.BANK_TRANSFER_REQUEST_CREATED,
           2,
           SagaStepStatus.SUCCESS,
-          toJson(request),
+          toJson(bankRequest),
           toJson(createResp),
           null);
       log.info("[Saga-STB] STEP 2 SUCCESS: sagaId={}, transferId={}", saga.getSagaId(), transferId);
@@ -378,7 +391,7 @@ public class SagaOrchestrator {
           SagaStepName.BANK_TRANSFER_REQUEST_CREATED,
           2,
           SagaStepStatus.FAILED,
-          toJson(request),
+          toJson(bankRequest),
           null,
           e.getMessage());
       return compensateStockToBank(
@@ -396,7 +409,7 @@ public class SagaOrchestrator {
         request,
         saga.getSagaId(),
         idempotencyKey,
-        xUserId,
+        settlementXUserId,
         traceId,
         transferId,
         fromAccountNumber,
