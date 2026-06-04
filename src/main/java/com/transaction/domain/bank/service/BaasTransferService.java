@@ -11,6 +11,7 @@ import com.transaction.domain.mapping.repository.TransferUserMappingRepository;
 import com.transaction.domain.mapping.repository.UserAccountMappingRepository;
 import com.transaction.domain.saga.service.SagaOrchestrator;
 import com.transaction.domain.stock.client.StockCoreClient;
+import com.transaction.global.exception.SagaException;
 import com.transaction.global.resolver.UserResolver;
 import com.transaction.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -86,7 +87,7 @@ public class BaasTransferService {
   private Long findToStockAccountId(Long xUserId, String traceId, String toAccountNumber) {
     try {
       return sagaOrchestrator.findStockAccountId(xUserId, traceId, toAccountNumber);
-    } catch (Exception e) {
+    } catch (SagaException e) {
       return null;
     }
   }
