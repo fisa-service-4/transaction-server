@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class StockCashResponse {
 
-    private Long accountId;
-    private BigDecimal cashBalance;
+  private Long accountId;
+  private BigDecimal cashBalance;
 }

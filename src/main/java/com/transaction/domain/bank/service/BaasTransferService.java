@@ -8,9 +8,9 @@ import com.transaction.domain.bank.dto.response.BaasTransferApproveResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferCreateResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferDetailResponse;
 import com.transaction.domain.mapping.entity.TransferUserMapping;
+import com.transaction.domain.mapping.entity.UserAccountMappingId;
 import com.transaction.domain.mapping.repository.TransferUserMappingRepository;
 import com.transaction.domain.mapping.repository.UserAccountMappingRepository;
-import com.transaction.domain.mapping.entity.UserAccountMappingId;
 import com.transaction.domain.saga.service.SagaOrchestrator;
 import com.transaction.domain.stock.client.StockCoreClient;
 import com.transaction.domain.stock.dto.response.BaasStockAccountItemResponse;
@@ -60,8 +60,11 @@ public class BaasTransferService {
       log.info("[BaasTransferService] STOCK_TO_BANK 라우팅: xUserId={}, traceId={}", xUserId, traceId);
 
       // validate API가 4xx를 반환하면 Feign 예외로 전파되지만, validYn으로 한 번 더 명시적으로 확인
-      AccountValidateResponse bankValidate = bankCoreClient.validateAccount(
-          xUserId, traceId, new AccountValidateRequest(toBankCode, toAccountNumber)).getData();
+      AccountValidateResponse bankValidate =
+          bankCoreClient
+              .validateAccount(
+                  xUserId, traceId, new AccountValidateRequest(toBankCode, toAccountNumber))
+              .getData();
       if (!bankValidate.isValidYn()) {
         throw new SagaException("ACCOUNT_001", "유효하지 않은 은행 계좌입니다.", HttpStatus.BAD_REQUEST);
       }
@@ -70,7 +73,8 @@ public class BaasTransferService {
       // user_account_mapping에 accountNumber가 없어서 stock-server 계좌 목록 조회 후 필터링
       String fromAccountNumber = resolveStockAccountNumber(xUserId, traceId, fromAccountId);
       BaasTransferCreateResponse result =
-          sagaOrchestrator.stockToBank(request, idempotencyKey, xUserId, traceId, fromAccountNumber);
+          sagaOrchestrator.stockToBank(
+              request, idempotencyKey, xUserId, traceId, fromAccountNumber);
       return ApiResponse.success(result, traceId);
     }
 
@@ -78,11 +82,17 @@ public class BaasTransferService {
 
     // ─── BANK_TO_STOCK ─────────────────────────────────────────────────
     if (toIsStock) {
-      log.info("[BaasTransferService] BANK_TO_STOCK 라우팅: xUserId={}, toBankCode={}, traceId={}",
-          xUserId, toBankCode, traceId);
+      log.info(
+          "[BaasTransferService] BANK_TO_STOCK 라우팅: xUserId={}, toBankCode={}, traceId={}",
+          xUserId,
+          toBankCode,
+          traceId);
 
-      AccountValidateResponse stockValidate = stockCoreClient.validateAccount(
-          xUserId, traceId, new AccountValidateRequest(toBankCode, toAccountNumber)).getData();
+      AccountValidateResponse stockValidate =
+          stockCoreClient
+              .validateAccount(
+                  xUserId, traceId, new AccountValidateRequest(toBankCode, toAccountNumber))
+              .getData();
       if (!stockValidate.isValidYn()) {
         throw new SagaException("ACCOUNT_001", "유효하지 않은 증권 계좌입니다.", HttpStatus.BAD_REQUEST);
       }
@@ -95,8 +105,11 @@ public class BaasTransferService {
     // ─── bank-to-bank ───────────────────────────────────────────────────
     log.info("[BaasTransferService] bank-to-bank 이체: xUserId={}, traceId={}", xUserId, traceId);
 
-    AccountValidateResponse btbValidate = bankCoreClient.validateAccount(
-        xUserId, traceId, new AccountValidateRequest(toBankCode, toAccountNumber)).getData();
+    AccountValidateResponse btbValidate =
+        bankCoreClient
+            .validateAccount(
+                xUserId, traceId, new AccountValidateRequest(toBankCode, toAccountNumber))
+            .getData();
     if (!btbValidate.isValidYn()) {
       throw new SagaException("ACCOUNT_001", "유효하지 않은 은행 계좌입니다.", HttpStatus.BAD_REQUEST);
     }
@@ -107,21 +120,26 @@ public class BaasTransferService {
     Long transferId = response.getData().getTransferId();
     transferUserMappingRepository.save(new TransferUserMapping(transferId, xUserId));
 
-    log.info("[BaasTransferService] bank-to-bank 완료: transferId={}, status={}",
-        transferId, response.getData().getTransferStatus());
+    log.info(
+        "[BaasTransferService] bank-to-bank 완료: transferId={}, status={}",
+        transferId,
+        response.getData().getTransferStatus());
 
     return ApiResponse.success(response.getData(), traceId);
   }
 
   public ApiResponse<BaasTransferApproveResponse> approveTransfer(String traceId, Long transferId) {
     Long xUserId = userResolver.resolveByTransferId(transferId);
-    log.info("[BaasTransferService] approveTransfer: xUserId={}, transferId={}", xUserId, transferId);
+    log.info(
+        "[BaasTransferService] approveTransfer: xUserId={}, transferId={}", xUserId, transferId);
 
     ApiResponse<BaasTransferApproveResponse> response =
         bankCoreClient.approveTransfer(xUserId, traceId, transferId);
 
-    log.info("[BaasTransferService] approveTransfer 완료: transferId={}, status={}",
-        response.getData().getTransferId(), response.getData().getTransferStatus());
+    log.info(
+        "[BaasTransferService] approveTransfer 완료: transferId={}, status={}",
+        response.getData().getTransferId(),
+        response.getData().getTransferStatus());
 
     return ApiResponse.success(response.getData(), traceId);
   }
@@ -133,8 +151,10 @@ public class BaasTransferService {
     ApiResponse<BaasTransferDetailResponse> response =
         bankCoreClient.getTransfer(xUserId, traceId, transferId);
 
-    log.info("[BaasTransferService] getTransfer 완료: transferId={}, status={}",
-        response.getData().getTransferId(), response.getData().getTransferStatus());
+    log.info(
+        "[BaasTransferService] getTransfer 완료: transferId={}, status={}",
+        response.getData().getTransferId(),
+        response.getData().getTransferStatus());
 
     return ApiResponse.success(response.getData(), traceId);
   }
@@ -145,12 +165,11 @@ public class BaasTransferService {
 
   // fromAccountId(Long) → fromAccountNumber(String) 변환 — STOCK_TO_BANK 전용
   private String resolveStockAccountNumber(Long xUserId, String traceId, Long fromAccountId) {
-    return stockCoreClient.getStockAccounts(xUserId, traceId)
-        .getData().getContent().stream()
+    return stockCoreClient.getStockAccounts(xUserId, traceId).getData().getContent().stream()
         .filter(a -> fromAccountId.equals(a.getAccountId()))
         .findFirst()
         .map(BaasStockAccountItemResponse::getAccountNumber)
-        .orElseThrow(() -> new SagaException(
-            "SAGA_002", "증권 계좌를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST));
+        .orElseThrow(
+            () -> new SagaException("SAGA_002", "증권 계좌를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST));
   }
 }

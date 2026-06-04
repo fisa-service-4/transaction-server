@@ -9,6 +9,6 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AccountValidateResponse {
 
-    private boolean validYn;
-    private String status;
+  private boolean validYn;
+  private String status;
 }

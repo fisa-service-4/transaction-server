@@ -12,5 +12,5 @@ import org.springframework.stereotype.Component;
 @Setter
 public class BrokerCodeProperties {
 
-    private Set<String> codes;
+  private Set<String> codes;
 }

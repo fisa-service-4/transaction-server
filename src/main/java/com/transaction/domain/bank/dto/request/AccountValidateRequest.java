@@ -9,6 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AccountValidateRequest {
 
-    private String toBankCode;
-    private String toAccountNumber;
+  private String toBankCode;
+  private String toAccountNumber;
 }
