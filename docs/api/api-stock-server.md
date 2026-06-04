@@ -198,7 +198,7 @@
         "accountId": 2001,
         "accountNumber": "300-123-456789",
         "accountName": "내 주식 계좌",
-        "bankCode": "039"
+        "bankCode": "243"
       }
     ]
   },
@@ -229,6 +229,54 @@
   }
 }
 ```
+
+---
+
+## STOCK-ACCOUNT-003. 계좌 유효성 검증
+
+**POST** `/accounts/validate`
+
+> **온프레미스 내부 전용 API** — transaction-server → stock-server 직접 호출.
+> 외부 클라이언트(service-backend, 프론트엔드) 호출 대상 아님.
+> 이체 Saga 진행 전 입금 대상 증권 계좌의 존재 여부 및 상태를 검증합니다.
+
+### Request Body
+
+```json
+{
+  "toBankCode": "243",
+  "toAccountNumber": "300-777-000071"
+}
+```
+
+### Request Fields
+
+| 필드            | 타입   | 필수 | 설명                                                       |
+| --------------- | ------ | ---- | ---------------------------------------------------------- |
+| toBankCode      | String | O    | 증권사 식별 코드. `243` (한국투자증권) / `247` (NH투자증권) |
+| toAccountNumber | String | O    | 계좌번호                                                   |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "validYn": true,
+    "status": "ACTIVE"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+### Error Cases
+
+| 상황            | 코드        | HTTP | 메시지                    |
+| --------------- | ----------- | ---- | ------------------------- |
+| 계좌 없음       | ACCOUNT_001 | 404  | 계좌를 찾을 수 없습니다   |
+| LOCKED / CLOSED | ACCOUNT_003 | 400  | 사용할 수 없는 계좌입니다 |
 
 ---
 
