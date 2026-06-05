@@ -19,72 +19,72 @@ import org.hibernate.annotations.CreationTimestamp;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OutboxEvent {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "outbox_id")
-    private Long outboxId;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "outbox_id")
+  private Long outboxId;
 
-    @Column(name = "aggregate_type", nullable = false, length = 50)
-    private String aggregateType;
+  @Column(name = "aggregate_type", nullable = false, length = 50)
+  private String aggregateType;
 
-    @Column(name = "aggregate_id", nullable = false)
-    private Long aggregateId;
+  @Column(name = "aggregate_id", nullable = false)
+  private Long aggregateId;
 
-    @Column(name = "event_type", nullable = false, length = 100)
-    private String eventType;
+  @Column(name = "event_type", nullable = false, length = 100)
+  private String eventType;
 
-    @Column(name = "topic_name", nullable = false, length = 255)
-    private String topicName;
+  @Column(name = "topic_name", nullable = false, length = 255)
+  private String topicName;
 
-    @Column(name = "partition_key", length = 255)
-    private String partitionKey;
+  @Column(name = "partition_key", length = 255)
+  private String partitionKey;
 
-    @Lob
-    @Column(name = "payload", nullable = false)
-    private String payload;
+  @Lob
+  @Column(name = "payload", nullable = false)
+  private String payload;
 
-    @Lob
-    @Column(name = "headers")
-    private String headers;
+  @Lob
+  @Column(name = "headers")
+  private String headers;
 
-    @Column(name = "published_yn", nullable = false)
-    private boolean publishedYn;
+  @Column(name = "published_yn", nullable = false)
+  private boolean publishedYn;
 
-    @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+  @Column(name = "published_at")
+  private LocalDateTime publishedAt;
 
-    @Column(name = "retry_count", nullable = false)
-    private int retryCount;
+  @Column(name = "retry_count", nullable = false)
+  private int retryCount;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+  @CreationTimestamp
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private LocalDateTime createdAt;
 
-    public static OutboxEvent create(
-            String aggregateType,
-            Long aggregateId,
-            String eventType,
-            String topicName,
-            String partitionKey,
-            String payload) {
-        OutboxEvent event = new OutboxEvent();
-        event.aggregateType = aggregateType;
-        event.aggregateId = aggregateId;
-        event.eventType = eventType;
-        event.topicName = topicName;
-        event.partitionKey = partitionKey;
-        event.payload = payload;
-        event.publishedYn = false;
-        event.retryCount = 0;
-        return event;
-    }
+  public static OutboxEvent create(
+      String aggregateType,
+      Long aggregateId,
+      String eventType,
+      String topicName,
+      String partitionKey,
+      String payload) {
+    OutboxEvent event = new OutboxEvent();
+    event.aggregateType = aggregateType;
+    event.aggregateId = aggregateId;
+    event.eventType = eventType;
+    event.topicName = topicName;
+    event.partitionKey = partitionKey;
+    event.payload = payload;
+    event.publishedYn = false;
+    event.retryCount = 0;
+    return event;
+  }
 
-    public void markPublished() {
-        this.publishedYn = true;
-        this.publishedAt = LocalDateTime.now();
-    }
+  public void markPublished() {
+    this.publishedYn = true;
+    this.publishedAt = LocalDateTime.now();
+  }
 
-    public void incrementRetry() {
-        this.retryCount++;
-    }
+  public void incrementRetry() {
+    this.retryCount++;
+  }
 }

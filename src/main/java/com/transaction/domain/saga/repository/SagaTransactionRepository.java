@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SagaTransactionRepository extends JpaRepository<SagaTransaction, Long> {
 
-    Optional<SagaTransaction> findByTransactionKey(String transactionKey);
+  Optional<SagaTransaction> findByTransactionKey(String transactionKey);
 }

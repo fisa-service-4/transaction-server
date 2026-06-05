@@ -14,38 +14,44 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class IdempotencyService {
 
-    private final IdempotencyKeyRepository idempotencyKeyRepository;
+  private final IdempotencyKeyRepository idempotencyKeyRepository;
 
-    @Transactional
-    public Optional<String> check(String key, String requestHash, String requestType) {
-        Optional<IdempotencyKey> existing = idempotencyKeyRepository.findById(key);
-        if (existing.isPresent()) {
-            IdempotencyKey ik = existing.get();
-            log.info("[IdempotencyService] 중복 요청 감지: key={}, status={}", key, ik.getStatus());
-            if (ik.isProcessing()) {
-                throw new DuplicateRequestInProgressException(key);
-            }
-            return Optional.ofNullable(ik.getResponsePayload());
-        }
-        idempotencyKeyRepository.save(IdempotencyKey.create(key, requestHash, requestType));
-        return Optional.empty();
+  @Transactional
+  public Optional<String> check(String key, String requestHash, String requestType) {
+    Optional<IdempotencyKey> existing = idempotencyKeyRepository.findById(key);
+    if (existing.isPresent()) {
+      IdempotencyKey ik = existing.get();
+      log.info("[IdempotencyService] 중복 요청 감지: key={}, status={}", key, ik.getStatus());
+      if (ik.isProcessing()) {
+        throw new DuplicateRequestInProgressException(key);
+      }
+      return Optional.ofNullable(ik.getResponsePayload());
     }
+    idempotencyKeyRepository.save(IdempotencyKey.create(key, requestHash, requestType));
+    return Optional.empty();
+  }
 
-    @Transactional
-    public void complete(String key, String responsePayload) {
-        idempotencyKeyRepository.findById(key).ifPresent(ik -> {
-            ik.complete(responsePayload);
-            idempotencyKeyRepository.save(ik);
-            log.info("[IdempotencyService] 완료 처리: key={}", key);
-        });
-    }
+  @Transactional
+  public void complete(String key, String responsePayload) {
+    idempotencyKeyRepository
+        .findById(key)
+        .ifPresent(
+            ik -> {
+              ik.complete(responsePayload);
+              idempotencyKeyRepository.save(ik);
+              log.info("[IdempotencyService] 완료 처리: key={}", key);
+            });
+  }
 
-    @Transactional
-    public void fail(String key) {
-        idempotencyKeyRepository.findById(key).ifPresent(ik -> {
-            ik.fail();
-            idempotencyKeyRepository.save(ik);
-            log.warn("[IdempotencyService] 실패 처리: key={}", key);
-        });
-    }
+  @Transactional
+  public void fail(String key) {
+    idempotencyKeyRepository
+        .findById(key)
+        .ifPresent(
+            ik -> {
+              ik.fail();
+              idempotencyKeyRepository.save(ik);
+              log.warn("[IdempotencyService] 실패 처리: key={}", key);
+            });
+  }
 }

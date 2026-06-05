@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SagaStepHistoryRepository extends JpaRepository<SagaStepHistory, Long> {
 
-    List<SagaStepHistory> findBySagaIdOrderByStepOrder(Long sagaId);
+  List<SagaStepHistory> findBySagaIdOrderByStepOrder(Long sagaId);
 }

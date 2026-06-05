@@ -12,23 +12,21 @@ import org.springframework.kafka.core.ProducerFactory;
 @Configuration
 public class KafkaConfig {
 
-    @Bean
-    public ProducerFactory<String, String> producerFactory(
-            KafkaProperties properties) {
+  @Bean
+  public ProducerFactory<String, String> producerFactory(KafkaProperties properties) {
 
-        Map<String, Object> config =
-                properties.buildProducerProperties(null);
+    Map<String, Object> config = properties.buildProducerProperties(null);
 
-        config.put(ProducerConfig.ACKS_CONFIG, "all");
-        config.put(ProducerConfig.RETRIES_CONFIG, 3);
+    config.put(ProducerConfig.ACKS_CONFIG, "all");
+    config.put(ProducerConfig.RETRIES_CONFIG, 3);
 
-        return new DefaultKafkaProducerFactory<>(config);
-    }
+    return new DefaultKafkaProducerFactory<>(config);
+  }
 
-    @Bean
-    public KafkaTemplate<String, String> kafkaTemplate(
-            ProducerFactory<String, String> producerFactory) {
+  @Bean
+  public KafkaTemplate<String, String> kafkaTemplate(
+      ProducerFactory<String, String> producerFactory) {
 
-        return new KafkaTemplate<>(producerFactory);
-    }
+    return new KafkaTemplate<>(producerFactory);
+  }
 }

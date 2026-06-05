@@ -38,3 +38,12 @@ core:
     url: ${BANK_SERVER_URL:http://bank-server:8080}
   stock:
     url: ${STOCK_SERVER_URL:http://stock-server:8082}
+
+broker:
+  codes:
+    - "243"
+    - "247"
+  settlement-accounts:
+    "243": 2439999
+    "247": 2479999
+  settlement-x-user-id: 999999

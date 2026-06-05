@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
 
-    List<OutboxEvent> findByPublishedYnFalseOrderByCreatedAt(Pageable pageable);
+  List<OutboxEvent> findByPublishedYnFalseOrderByCreatedAt(Pageable pageable);
 }

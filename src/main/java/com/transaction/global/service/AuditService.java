@@ -13,22 +13,31 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuditService {
 
-    private final TransactionAuditLogRepository auditLogRepository;
+  private final TransactionAuditLogRepository auditLogRepository;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void record(
-            String transactionType,
-            String transactionKey,
-            String status,
-            String sourceSystem,
-            String targetSystem,
-            String requestPayload,
-            String responsePayload) {
-        TransactionAuditLog auditLog = TransactionAuditLog.create(
-                transactionType, transactionKey, status, sourceSystem, targetSystem,
-                requestPayload, responsePayload);
-        auditLogRepository.save(auditLog);
-        log.info("[AuditService] 감사 로그 기록: type={}, key={}, status={}",
-                transactionType, transactionKey, status);
-    }
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void record(
+      String transactionType,
+      String transactionKey,
+      String status,
+      String sourceSystem,
+      String targetSystem,
+      String requestPayload,
+      String responsePayload) {
+    TransactionAuditLog auditLog =
+        TransactionAuditLog.create(
+            transactionType,
+            transactionKey,
+            status,
+            sourceSystem,
+            targetSystem,
+            requestPayload,
+            responsePayload);
+    auditLogRepository.save(auditLog);
+    log.info(
+        "[AuditService] 감사 로그 기록: type={}, key={}, status={}",
+        transactionType,
+        transactionKey,
+        status);
+  }
 }

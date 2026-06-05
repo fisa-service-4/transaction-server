@@ -13,19 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DeadLetterService {
 
-    private final DeadLetterEventRepository deadLetterEventRepository;
+  private final DeadLetterEventRepository deadLetterEventRepository;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void save(
-            String originalTopic,
-            String consumerGroup,
-            String payload,
-            String errorMessage,
-            String stackTrace,
-            int retryCount) {
-        DeadLetterEvent event = DeadLetterEvent.create(
-                originalTopic, consumerGroup, payload, errorMessage, stackTrace, retryCount);
-        deadLetterEventRepository.save(event);
-        log.warn("[DeadLetterService] DLQ 저장: topic={}, retryCount={}", originalTopic, retryCount);
-    }
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void save(
+      String originalTopic,
+      String consumerGroup,
+      String payload,
+      String errorMessage,
+      String stackTrace,
+      int retryCount) {
+    DeadLetterEvent event =
+        DeadLetterEvent.create(
+            originalTopic, consumerGroup, payload, errorMessage, stackTrace, retryCount);
+    deadLetterEventRepository.save(event);
+    log.warn("[DeadLetterService] DLQ 저장: topic={}, retryCount={}", originalTopic, retryCount);
+  }
 }

@@ -22,57 +22,57 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SagaStepHistory {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "step_history_id")
-    private Long stepHistoryId;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "step_history_id")
+  private Long stepHistoryId;
 
-    @Column(name = "saga_id", nullable = false)
-    private Long sagaId;
+  @Column(name = "saga_id", nullable = false)
+  private Long sagaId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "step_name", nullable = false, length = 100)
-    private SagaStepName stepName;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "step_name", nullable = false, length = 100)
+  private SagaStepName stepName;
 
-    @Column(name = "step_order", nullable = false)
-    private Integer stepOrder;
+  @Column(name = "step_order", nullable = false)
+  private Integer stepOrder;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "step_status", nullable = false, length = 30)
-    private SagaStepStatus stepStatus;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "step_status", nullable = false, length = 30)
+  private SagaStepStatus stepStatus;
 
-    @Lob
-    @Column(name = "request_payload")
-    private String requestPayload;
+  @Lob
+  @Column(name = "request_payload")
+  private String requestPayload;
 
-    @Lob
-    @Column(name = "response_payload")
-    private String responsePayload;
+  @Lob
+  @Column(name = "response_payload")
+  private String responsePayload;
 
-    @Lob
-    @Column(name = "error_message")
-    private String errorMessage;
+  @Lob
+  @Column(name = "error_message")
+  private String errorMessage;
 
-    @Column(name = "processed_at", nullable = false)
-    private LocalDateTime processedAt;
+  @Column(name = "processed_at", nullable = false)
+  private LocalDateTime processedAt;
 
-    public static SagaStepHistory create(
-            Long sagaId,
-            SagaStepName stepName,
-            int stepOrder,
-            SagaStepStatus status,
-            String requestPayload,
-            String responsePayload,
-            String errorMessage) {
-        SagaStepHistory history = new SagaStepHistory();
-        history.sagaId = sagaId;
-        history.stepName = stepName;
-        history.stepOrder = stepOrder;
-        history.stepStatus = status;
-        history.requestPayload = requestPayload;
-        history.responsePayload = responsePayload;
-        history.errorMessage = errorMessage;
-        history.processedAt = LocalDateTime.now();
-        return history;
-    }
+  public static SagaStepHistory create(
+      Long sagaId,
+      SagaStepName stepName,
+      int stepOrder,
+      SagaStepStatus status,
+      String requestPayload,
+      String responsePayload,
+      String errorMessage) {
+    SagaStepHistory history = new SagaStepHistory();
+    history.sagaId = sagaId;
+    history.stepName = stepName;
+    history.stepOrder = stepOrder;
+    history.stepStatus = status;
+    history.requestPayload = requestPayload;
+    history.responsePayload = responsePayload;
+    history.errorMessage = errorMessage;
+    history.processedAt = LocalDateTime.now();
+    return history;
+  }
 }
