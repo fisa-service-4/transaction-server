@@ -47,7 +47,7 @@ public class BaasTransferService {
     // fromIsStock: user_account_mapping에서 STOCK 여부 확인
     // toIsStock: application.yaml broker.codes에 등록된 증권사 코드 여부 (243, 247)
     boolean fromIsStock = isStockAccount(fromAccountId);
-    boolean toIsStock = brokerCodeProperties.getCodes().contains(toBankCode);
+    boolean toIsStock = brokerCodeProperties.getCodes() != null && brokerCodeProperties.getCodes().contains(toBankCode);
 
     if (fromIsStock && toIsStock) {
       // STOCK → STOCK: 미지원
