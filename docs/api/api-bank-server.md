@@ -451,16 +451,17 @@
 > Saga 보상 트랜잭션 API
 > Saga 실패 시 approve 이전 상태(REQUESTED / PROCESSING)의 Transfer를 명시적으로 CANCELLED로 전이
 > 실제 잔액 변동 없음 — 상태 전이만 수행
+> **멱등 보장:** 이미 CANCELLED 상태인 경우 재처리 없이 CANCELLED 응답 반환 (Saga orchestrator 재시도 안전)
 
 ### 취소 가능 상태
 
-| 현재 상태   | 결과        | 비고                                          |
-| ----------- | ----------- | --------------------------------------------- |
-| REQUESTED   | CANCELLED   | 취소 가능                                     |
-| PROCESSING  | CANCELLED   | 취소 가능 (approve 이전이므로 잔액 변동 없음) |
-| SUCCESS     | 예외 반환   | TRANSFER_003                                  |
-| FAILED      | 예외 반환   | TRANSFER_003                                  |
-| CANCELLED   | 예외 반환   | TRANSFER_003                                  |
+| 현재 상태   | 결과          | 비고                                                    |
+| ----------- | ------------- | ------------------------------------------------------- |
+| REQUESTED   | CANCELLED     | 취소 가능                                               |
+| PROCESSING  | CANCELLED     | 취소 가능 (approve 이전이므로 잔액 변동 없음)           |
+| CANCELLED   | CANCELLED     | 멱등 응답 반환 (Saga orchestrator 타임아웃 재시도 안전) |
+| SUCCESS     | 예외 반환     | TRANSFER_003                                            |
+| FAILED      | 예외 반환     | TRANSFER_003                                            |
 
 ### Request Body
 
