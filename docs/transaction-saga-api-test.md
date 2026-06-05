@@ -287,6 +287,8 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
 
 ## SAGA-STB-001. 정상 흐름 — 증권 예수금 출금 + 은행 입금
 
+> ⚠️ fromAccountId는 사용자의 증권 계좌 accountId를 사용
+
 ```bash
 curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
   -H "Idempotency-Key: saga-stb-001" \
@@ -349,6 +351,8 @@ SELECT account_id, balance FROM bank_account WHERE account_id = 1077;
 
 ## SAGA-STB-002. 멱등성 — 동일 Idempotency-Key 재요청
 
+> ⚠️ fromAccountId는 사용자의 증권 계좌 accountId를 사용
+
 ```bash
 # 첫 번째 요청
 curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
@@ -378,6 +382,8 @@ curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
 ---
 
 ## SAGA-STB-003. 에러 케이스 — 증권 예수금 부족
+
+> ⚠️ fromAccountId는 사용자의 증권 계좌 accountId를 사용
 
 ```bash
 curl -s -X POST "http://localhost:8083/baas/v1/bank/transfers" \
