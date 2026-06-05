@@ -1,6 +1,8 @@
 package com.transaction.domain.bank.client;
 
+import com.transaction.domain.bank.dto.request.AccountValidateRequest;
 import com.transaction.domain.bank.dto.request.BaasTransferRequest;
+import com.transaction.domain.bank.dto.response.AccountValidateResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountBalanceResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
@@ -65,6 +67,12 @@ public interface BankCoreClient {
       @RequestParam String fromDate,
       @RequestParam String toDate);
 
+  @PostMapping("/internal/v1/bank/accounts/validate")
+  ApiResponse<AccountValidateResponse> validateAccount(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @RequestBody AccountValidateRequest request);
+
   @PostMapping("/internal/v1/bank/transfers")
   ApiResponse<BaasTransferCreateResponse> createTransfer(
       @RequestHeader("X-User-Id") Long userId,
@@ -80,6 +88,12 @@ public interface BankCoreClient {
 
   @GetMapping("/internal/v1/bank/transfers/{transferId}")
   ApiResponse<BaasTransferDetailResponse> getTransfer(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @PathVariable("transferId") Long transferId);
+
+  @PostMapping("/internal/v1/bank/transfers/{transferId}/cancel")
+  ApiResponse<Void> cancelTransfer(
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("transferId") Long transferId);

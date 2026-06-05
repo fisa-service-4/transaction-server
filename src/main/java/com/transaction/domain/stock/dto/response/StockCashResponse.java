@@ -8,11 +8,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class BaasStockAccountItemResponse {
+public class StockCashResponse {
 
   private Long accountId;
-  private String accountNumber;
-  private String accountName;
-  private String bankCode;
   private BigDecimal cashBalance;
 }
