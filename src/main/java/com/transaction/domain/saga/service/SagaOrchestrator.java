@@ -552,6 +552,9 @@ public class SagaOrchestrator {
   // ==================== helpers ====================
 
   private void tryCancelTransfer(Long xUserId, String traceId, Long transferId, Long sagaId) {
+    if (transferId == null) {
+      return;
+    }
     try {
       bankCoreClient.cancelTransfer(xUserId, traceId, transferId);
       log.info("[Saga] bank transfer cancelled: sagaId={}, transferId={}", sagaId, transferId);

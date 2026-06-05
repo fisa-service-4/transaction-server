@@ -82,6 +82,10 @@ public class BaasTransferService {
       }
 
       Long settlementXUserId = brokerCodeProperties.getSettlementXUserId();
+      if (settlementXUserId == null) {
+        throw new SagaException(
+            "SAGA_004", "정산 계좌 사용자 ID가 설정되지 않았습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
+      }
       BaasTransferCreateResponse result =
           sagaOrchestrator.stockToBank(
               request,
