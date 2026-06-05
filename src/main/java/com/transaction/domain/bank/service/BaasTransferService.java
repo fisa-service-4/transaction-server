@@ -109,7 +109,7 @@ public class BaasTransferService {
               .validateAccount(
                   xUserId, traceId, new AccountValidateRequest(toBankCode, toAccountNumber))
               .getData();
-      if (!stockValidate.isValidYn()) {
+      if (stockValidate == null || !stockValidate.isValidYn()) {
         throw new SagaException("ACCOUNT_001", "유효하지 않은 증권 계좌입니다.", HttpStatus.BAD_REQUEST);
       }
 
