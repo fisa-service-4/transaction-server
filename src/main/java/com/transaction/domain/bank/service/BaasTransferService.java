@@ -126,7 +126,7 @@ public class BaasTransferService {
             .validateAccount(
                 xUserId, traceId, new AccountValidateRequest(toBankCode, toAccountNumber))
             .getData();
-    if (!btbValidate.isValidYn()) {
+    if (btbValidate == null || !btbValidate.isValidYn()) {
       throw new SagaException("ACCOUNT_001", "유효하지 않은 은행 계좌입니다.", HttpStatus.BAD_REQUEST);
     }
 
