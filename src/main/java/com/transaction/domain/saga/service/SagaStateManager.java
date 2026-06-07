@@ -10,7 +10,10 @@ import com.transaction.domain.saga.enums.SagaType;
 import com.transaction.domain.saga.repository.SagaStepHistoryRepository;
 import com.transaction.domain.saga.repository.SagaTransactionRepository;
 import com.transaction.global.config.KafkaTopics;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.transaction.global.service.IdempotencyService;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -24,6 +27,7 @@ public class SagaStateManager {
   private final SagaStepHistoryRepository sagaStepHistoryRepository;
   private final OutboxService outboxService;
   private final IdempotencyService idempotencyService;
+  private final ObjectMapper objectMapper;
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public SagaTransaction initSaga(SagaType type, String transactionKey, String outboxPayload) {
@@ -118,13 +122,17 @@ public class SagaStateManager {
     SagaTransaction saga = findSaga(sagaId);
     saga.fail(SagaStatus.COMPENSATION_FAILED, reason);
     sagaTransactionRepository.save(saga);
-    outboxService.save(
-        "SAGA",
-        sagaId,
-        "saga.compensation_failed",
-        KafkaTopics.SAGA_COMPENSATION_FAILED,
-        String.valueOf(sagaId),
-        String.format("{\"sagaId\":%d,\"reason\":\"%s\"}", sagaId, reason));
+    try {
+      outboxService.save(
+          "SAGA",
+          sagaId,
+          "saga.compensation_failed",
+          KafkaTopics.SAGA_COMPENSATION_FAILED,
+          String.valueOf(sagaId),
+          objectMapper.writeValueAsString(Map.of("sagaId", sagaId, "reason", reason)));
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("compensation_failed payload 직렬화 실패", e);
+    }
     idempotencyService.fail(idempotencyKey);
   }
 
