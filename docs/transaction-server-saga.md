@@ -1,7 +1,7 @@
 # transaction-server Saga 구현 계획
 
 > 작성일: 2026-06-01
-> 최종 수정: 2026-06-04
+> 최종 수정: 2026-06-07
 > 대상: transaction-server (`domain/saga`, `domain/outbox`, `domain/deadletter`, `domain/reconciliation`)
 > 참조: `docs/onpremise-saga.md`
 
@@ -458,8 +458,9 @@ Body: { fromAccountId: 2001 (증권계좌), ... }
 | `saga.completed` | 모든 단계 성공 | sagaId, steps 결과 |
 | `saga.failed` | 단계 실패, 보상 불필요 | sagaId, failedStep, reason |
 | `saga.compensated` | 보상 트랜잭션 완료 | sagaId, compensatedStep |
+| `saga.compensation_failed` | 보상 트랜잭션 실패 — 수동 개입 필요 | sagaId, reason |
 
-OutboxRelayScheduler: `@Scheduled(fixedDelay=1000)` → `published_yn=false` 이벤트 최대 100건씩 Kafka 발행
+OutboxRelayScheduler: `@Scheduled(fixedDelay=5000)` → `published_yn=false` 이벤트 최대 20건씩 Kafka 발행
 3회 실패 시 → DeadLetterEvent 저장
 
 ---
