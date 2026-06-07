@@ -27,29 +27,37 @@ public class ReconciliationService {
     LocalDateTime compensatingThreshold =
         now.minusMinutes(properties.getCompensatingTimeoutMinutes());
 
-    long compensationFailed = sagaTransactionRepository.countBySagaStatus(SagaStatus.COMPENSATION_FAILED);
+    long compensationFailed =
+        sagaTransactionRepository.countBySagaStatus(SagaStatus.COMPENSATION_FAILED);
     long unknown = sagaTransactionRepository.countBySagaStatus(SagaStatus.UNKNOWN);
-    long processingStuck = sagaTransactionRepository.countBySagaStatusAndStartedAtBefore(
-        SagaStatus.PROCESSING, processingThreshold);
-    long compensatingStuck = sagaTransactionRepository.countBySagaStatusAndStartedAtBefore(
-        SagaStatus.COMPENSATING, compensatingThreshold);
+    long processingStuck =
+        sagaTransactionRepository.countBySagaStatusAndStartedAtBefore(
+            SagaStatus.PROCESSING, processingThreshold);
+    long compensatingStuck =
+        sagaTransactionRepository.countBySagaStatusAndStartedAtBefore(
+            SagaStatus.COMPENSATING, compensatingThreshold);
 
     long totalAnomalies = compensationFailed + unknown + processingStuck + compensatingStuck;
     String status = totalAnomalies == 0 ? "SUCCESS" : "FAILED";
 
-    ReconciliationResult result = ReconciliationResult.create(
-        "SAGA_ANOMALY",
-        "transaction-server",
-        "saga_transaction",
-        (long) sagaTransactionRepository.count(),
-        null,
-        totalAnomalies,
-        status);
+    ReconciliationResult result =
+        ReconciliationResult.create(
+            "SAGA_ANOMALY",
+            "transaction-server",
+            "saga_transaction",
+            (long) sagaTransactionRepository.count(),
+            null,
+            totalAnomalies,
+            status);
     reconciliationResultRepository.save(result);
 
     log.info(
         "[Reconciliation] 검증 완료: status={}, compensationFailed={}, unknown={}, processingStuck={}, compensatingStuck={}",
-        status, compensationFailed, unknown, processingStuck, compensatingStuck);
+        status,
+        compensationFailed,
+        unknown,
+        processingStuck,
+        compensatingStuck);
 
     if (totalAnomalies > 0) {
       log.warn("[Reconciliation] Saga 이상 상태 감지: 총 {}건 수동 확인 필요", totalAnomalies);

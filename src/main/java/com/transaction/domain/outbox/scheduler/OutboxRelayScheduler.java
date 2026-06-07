@@ -28,15 +28,16 @@ public class OutboxRelayScheduler {
   @Transactional
   public void relay() {
     List<OutboxEvent> events =
-        outboxEventRepository.findByPublishedYnFalseOrderByCreatedAt(
-            PageRequest.of(0, BATCH_SIZE));
+        outboxEventRepository.findByPublishedYnFalseOrderByCreatedAt(PageRequest.of(0, BATCH_SIZE));
 
     for (OutboxEvent event : events) {
       try {
         kafkaTemplate.send(event.getTopicName(), event.getPartitionKey(), event.getPayload()).get();
         event.markPublished();
         log.info(
-            "[OutboxRelay] 발행 완료: topic={}, outboxId={}", event.getTopicName(), event.getOutboxId());
+            "[OutboxRelay] 발행 완료: topic={}, outboxId={}",
+            event.getTopicName(),
+            event.getOutboxId());
       } catch (Exception e) {
         event.incrementRetry();
         log.warn(
@@ -55,7 +56,9 @@ public class OutboxRelayScheduler {
               event.getRetryCount());
           event.markPublished(); // DLQ 이관 후 재처리 방지
           log.error(
-              "[OutboxRelay] DLQ 이관: topic={}, outboxId={}", event.getTopicName(), event.getOutboxId());
+              "[OutboxRelay] DLQ 이관: topic={}, outboxId={}",
+              event.getTopicName(),
+              event.getOutboxId());
         }
       }
     }
