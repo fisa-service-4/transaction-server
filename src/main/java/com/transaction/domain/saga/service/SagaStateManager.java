@@ -118,6 +118,13 @@ public class SagaStateManager {
     SagaTransaction saga = findSaga(sagaId);
     saga.fail(SagaStatus.COMPENSATION_FAILED, reason);
     sagaTransactionRepository.save(saga);
+    outboxService.save(
+        "SAGA",
+        sagaId,
+        "saga.compensation_failed",
+        KafkaTopics.SAGA_COMPENSATION_FAILED,
+        String.valueOf(sagaId),
+        String.format("{\"sagaId\":%d,\"reason\":\"%s\"}", sagaId, reason));
     idempotencyService.fail(idempotencyKey);
   }
 
