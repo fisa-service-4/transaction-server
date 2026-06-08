@@ -45,9 +45,12 @@ public class ReconciliationService {
             "SAGA_ANOMALY",
             "transaction-server",
             "saga_transaction",
-            (long) sagaTransactionRepository.count(),
+            sagaTransactionRepository.count(),
             null,
-            totalAnomalies,
+            compensationFailed,
+            unknown,
+            processingStuck,
+            compensatingStuck,
             status);
     reconciliationResultRepository.save(result);
 

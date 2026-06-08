@@ -40,6 +40,18 @@ public class ReconciliationResult {
   @Column(name = "mismatch_count")
   private Long mismatchCount;
 
+  @Column(name = "compensation_failed_count", nullable = false)
+  private Long compensationFailedCount;
+
+  @Column(name = "unknown_count", nullable = false)
+  private Long unknownCount;
+
+  @Column(name = "processing_stuck_count", nullable = false)
+  private Long processingStuckCount;
+
+  @Column(name = "compensating_stuck_count", nullable = false)
+  private Long compensatingStuckCount;
+
   @Column(name = "reconciliation_status", nullable = false, length = 30)
   private String reconciliationStatus;
 
@@ -52,7 +64,10 @@ public class ReconciliationResult {
       String targetSystem,
       Long sourceCount,
       Long targetCount,
-      Long mismatchCount,
+      Long compensationFailedCount,
+      Long unknownCount,
+      Long processingStuckCount,
+      Long compensatingStuckCount,
       String status) {
     ReconciliationResult result = new ReconciliationResult();
     result.reconciliationType = type;
@@ -60,7 +75,11 @@ public class ReconciliationResult {
     result.targetSystem = targetSystem;
     result.sourceCount = sourceCount;
     result.targetCount = targetCount;
-    result.mismatchCount = mismatchCount;
+    result.compensationFailedCount = compensationFailedCount;
+    result.unknownCount = unknownCount;
+    result.processingStuckCount = processingStuckCount;
+    result.compensatingStuckCount = compensatingStuckCount;
+    result.mismatchCount = compensationFailedCount + unknownCount + processingStuckCount + compensatingStuckCount;
     result.reconciliationStatus = status;
     result.checkedAt = LocalDateTime.now();
     return result;
