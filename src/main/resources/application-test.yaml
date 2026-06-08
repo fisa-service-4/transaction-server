@@ -45,3 +45,8 @@ broker:
     "243": 2439999
     "247": 2479999
   settlement-x-user-id: 999999
+
+saga:
+  reconciliation:
+    processing-timeout-minutes: 30
+    compensating-timeout-minutes: 10

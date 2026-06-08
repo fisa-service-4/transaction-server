@@ -94,20 +94,38 @@
 
 ### 작업 목록
 
+**`saga.compensation_failed` 이벤트 추가**
+- `global/config/KafkaTopics` — `SAGA_COMPENSATION_FAILED = "saga.compensation_failed"` 상수 추가
+- `domain/saga/service/SagaStateManager.compensationFailedSaga()` — Outbox 이벤트 발행 추가
+
 **OutboxRelayScheduler**
 - `domain/outbox/scheduler/OutboxRelayScheduler`
-  - `@Scheduled(fixedDelay = 1000)`
-  - `published_yn = false` 이벤트 최대 100건 Kafka 발행
+  - `@Scheduled(fixedDelay = 5000)` (5초)
+  - `published_yn = false` 이벤트 최대 20건 Kafka 발행
   - 성공 → `published_yn = true`, `published_at` 갱신
   - 3회 실패 → `DeadLetterService.save()` 호출
 
-**ReconciliationService**
+**ReconciliationService — Saga 이상 상태 감지 전용**
 - `domain/reconciliation/service/ReconciliationService`
-  - bank-server `POST /reconciliation/run` 호출
+  - bank/stock 호출 없음 (원장 정합성 검증은 각 서버 책임)
+  - Saga 이상 상태 4종 감지:
+    - `COMPENSATION_FAILED` 상태 존재 여부
+    - `UNKNOWN` 상태 존재 여부
+    - `PROCESSING` 상태 장기 방치 (timeout 초과)
+    - `COMPENSATING` 상태 장기 방치 (timeout 초과)
   - 결과를 `reconciliation_result` 테이블에 저장
-  - Case A에서 방치된 `REQUESTED` 이체 탐지 및 로깅 처리
+  - timeout 기준은 `application.yaml` 설정값으로 관리
+
+**application.yaml 설정 추가**
+```yaml
+saga:
+  reconciliation:
+    processing-timeout-minutes: 30
+    compensating-timeout-minutes: 10
+```
 
 ### 완료 기준
 - Outbox 이벤트 발행 후 Kafka UI에서 `saga.completed` 수신 확인
 - 3회 실패 시 `dead_letter_event` 레코드 생성 확인
-- `ReconciliationService` 호출 시 `reconciliation_result` 저장 확인
+- `COMPENSATION_FAILED` Saga 존재 시 `saga.compensation_failed` Kafka 이벤트 발행 확인
+- `ReconciliationService` 실행 시 `reconciliation_result` 저장 확인
