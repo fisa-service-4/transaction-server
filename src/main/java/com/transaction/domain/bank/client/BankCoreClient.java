@@ -11,6 +11,8 @@ import com.transaction.domain.bank.dto.response.BaasTransactionResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferApproveResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferCreateResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferDetailResponse;
+import com.transaction.domain.card.dto.response.BaasCardApprovalResponse;
+import com.transaction.domain.card.dto.response.BaasCardListResponse;
 import com.transaction.global.config.FeignConfig;
 import com.transaction.global.response.ApiResponse;
 import com.transaction.global.response.PageResponse;
@@ -101,4 +103,19 @@ public interface BankCoreClient {
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("transferId") Long transferId);
+
+  @GetMapping("/internal/v1/card/accounts/{accountId}/cards")
+  ApiResponse<BaasCardListResponse> getCardsByAccount(
+      @RequestHeader("X-Trace-Id") String traceId,
+      @PathVariable("accountId") Long accountId);
+
+  @GetMapping("/internal/v1/card/cards/{cardId}/approvals")
+  ApiResponse<PageResponse<BaasCardApprovalResponse>> getCardApprovals(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @PathVariable("cardId") Long cardId,
+      @RequestParam(required = false) String fromDate,
+      @RequestParam(required = false) String toDate,
+      @RequestParam(required = false) Integer page,
+      @RequestParam(required = false) Integer size);
 }
