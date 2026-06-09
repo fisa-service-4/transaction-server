@@ -24,7 +24,7 @@ public class HealthController {
 
   @GetMapping("/health")
   public ApiResponse<Map<String, String>> health() {
-    return ApiResponse.success(Map.of("status", "UP"), UUID.randomUUID().toString());
+    return ApiResponse.success(Map.of("status", "UP"), "health");
   }
 
   @GetMapping("/health/bank")
