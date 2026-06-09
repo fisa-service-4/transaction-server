@@ -79,7 +79,8 @@ public class ReconciliationResult {
     result.unknownCount = unknownCount;
     result.processingStuckCount = processingStuckCount;
     result.compensatingStuckCount = compensatingStuckCount;
-    result.mismatchCount = compensationFailedCount + unknownCount + processingStuckCount + compensatingStuckCount;
+    result.mismatchCount =
+        compensationFailedCount + unknownCount + processingStuckCount + compensatingStuckCount;
     result.reconciliationStatus = status;
     result.checkedAt = LocalDateTime.now();
     return result;
