@@ -13,7 +13,6 @@ public class BaasTransactionResponse {
 
   private Long transactionId;
   private String transactionType;
-  private String transactionCategory;
   private BigDecimal amount;
   private BigDecimal balanceAfter;
   private String transactionChannel;

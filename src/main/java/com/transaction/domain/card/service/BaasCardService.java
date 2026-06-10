@@ -19,10 +19,15 @@ public class BaasCardService {
   private final UserResolver userResolver;
 
   public ApiResponse<BaasCardListResponse> getCardsByAccount(String traceId, Long accountId) {
-    log.info("[BaasCardService] getCardsByAccount 시작: traceId={}, accountId={}", traceId, accountId);
+    Long xUserId = userResolver.resolveByAccount(accountId, "BANK");
+    log.info(
+        "[BaasCardService] getCardsByAccount 시작: xUserId={}, traceId={}, accountId={}",
+        xUserId,
+        traceId,
+        accountId);
 
     ApiResponse<BaasCardListResponse> response =
-        bankCoreClient.getCardsByAccount(traceId, accountId);
+        bankCoreClient.getCardsByAccount(xUserId, traceId, accountId);
 
     log.info(
         "[BaasCardService] card-server getCardsByAccount 완료: accountId={}, count={}",
@@ -35,12 +40,13 @@ public class BaasCardService {
   public ApiResponse<PageResponse<BaasCardApprovalResponse>> getCardApprovals(
       String traceId,
       Long cardId,
-      String firebaseUid,
       String fromDate,
       String toDate,
+      String approvalStatus,
+      String merchantCategory,
       Integer page,
       Integer size) {
-    Long xUserId = userResolver.resolveByFirebaseUid(firebaseUid);
+    Long xUserId = 0L;
     log.info(
         "[BaasCardService] getCardApprovals 시작: xUserId={}, traceId={}, cardId={}",
         xUserId,
@@ -48,7 +54,16 @@ public class BaasCardService {
         cardId);
 
     ApiResponse<PageResponse<BaasCardApprovalResponse>> response =
-        bankCoreClient.getCardApprovals(xUserId, traceId, cardId, fromDate, toDate, page, size);
+        bankCoreClient.getCardApprovals(
+            xUserId,
+            traceId,
+            cardId,
+            fromDate,
+            toDate,
+            approvalStatus,
+            merchantCategory,
+            page,
+            size);
 
     log.info(
         "[BaasCardService] card-server getCardApprovals 완료: cardId={}, totalElements={}",

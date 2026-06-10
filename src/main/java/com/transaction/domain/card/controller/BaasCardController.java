@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,9 +53,10 @@ public class BaasCardController {
   @GetMapping("/cards/{cardId}/approvals")
   public ApiResponse<PageResponse<BaasCardApprovalResponse>> getCardApprovals(
       @PathVariable Long cardId,
-      @RequestHeader("X-Firebase-Uid") String firebaseUid,
       @RequestParam(required = false) String fromDate,
       @RequestParam(required = false) String toDate,
+      @RequestParam(required = false) String approvalStatus,
+      @RequestParam(required = false) String merchantCategory,
       @RequestParam(required = false) Integer page,
       @RequestParam(required = false) Integer size,
       HttpServletRequest httpRequest) {
@@ -69,7 +69,8 @@ public class BaasCardController {
         traceId);
 
     ApiResponse<PageResponse<BaasCardApprovalResponse>> response =
-        baasCardService.getCardApprovals(traceId, cardId, firebaseUid, fromDate, toDate, page, size);
+        baasCardService.getCardApprovals(
+            traceId, cardId, fromDate, toDate, approvalStatus, merchantCategory, page, size);
 
     log.info(
         "[BaasCardController] GET /baas/v1/card/cards/{}/approvals 완료: traceId={}",
