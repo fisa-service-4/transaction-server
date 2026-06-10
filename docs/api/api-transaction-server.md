@@ -201,7 +201,7 @@
 
 ## BANK-ACCOUNT-003. 계좌 잔액 조회
 
-**GET** `/accounts/{accountId}/balance`
+**GET** `/bank/accounts/{accountId}/balance`
 
 ### Response `200 OK`
 
@@ -223,7 +223,7 @@
 
 ## BANK-ACCOUNT-004. 거래내역 조회
 
-**GET** `/accounts/{accountId}/transactions`
+**GET** `/bank/accounts/{accountId}/transactions`
 
 ### Query Parameters
 
