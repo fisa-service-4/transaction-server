@@ -211,4 +211,121 @@ class SagaOrchestratorStockToBankTest {
 
     verify(sagaStateManager).compensationFailedSaga(eq(SAGA_ID), eq(IDEM_KEY), anyString());
   }
+
+  @Test
+  void stockToBank_STEP3실패후bank상태SUCCESS_복구() {
+    // approve 예외 → bank 상태 조회 → SUCCESS → Saga SUCCESS로 복구
+    SagaTransaction saga = newMockSaga();
+    ApiResponse<BaasTransferDetailResponse> detailResp = transferDetailResponse("SUCCESS");
+    when(idempotencyService.check(anyString(), anyString(), eq("STOCK_TO_BANK")))
+        .thenReturn(Optional.empty());
+    when(sagaStateManager.initSaga(any(), anyString(), anyString())).thenReturn(saga);
+    when(stockCoreClient.withdrawCash(anyLong(), anyString(), anyString(), any()))
+        .thenReturn(cashResponse());
+    when(bankCoreClient.createTransfer(anyLong(), anyString(), anyString(), any()))
+        .thenReturn(createTransferResponse());
+    when(bankCoreClient.approveTransfer(anyLong(), anyString(), anyLong()))
+        .thenThrow(new RuntimeException("approve timeout"));
+    when(bankCoreClient.getTransfer(anyLong(), anyString(), anyLong())).thenReturn(detailResp);
+
+    BaasTransferCreateResponse result =
+        sagaOrchestrator.stockToBank(
+            buildRequest(),
+            IDEM_KEY,
+            X_USER_ID,
+            TRACE_ID,
+            FROM_ACCOUNT_NUMBER,
+            SETTLEMENT_ACCOUNT_ID,
+            SETTLEMENT_X_USER_ID);
+
+    assertThat(result.getTransferStatus()).isEqualTo("SUCCESS");
+    verify(sagaStateManager).completeSaga(eq(SAGA_ID), eq(IDEM_KEY), anyString(), anyString());
+    verify(stockCoreClient, never()).depositCash(anyLong(), anyString(), anyString(), any());
+  }
+
+  @Test
+  void stockToBank_STEP3실패후bank상태REQUESTED_보상_COMPENSATED() {
+    // approve 예외 → bank 상태 REQUESTED → stock deposit 보상 트랜잭션
+    SagaTransaction saga = newMockSaga();
+    ApiResponse<BaasTransferDetailResponse> detailResp = transferDetailResponse("REQUESTED");
+    when(idempotencyService.check(anyString(), anyString(), eq("STOCK_TO_BANK")))
+        .thenReturn(Optional.empty());
+    when(sagaStateManager.initSaga(any(), anyString(), anyString())).thenReturn(saga);
+    when(stockCoreClient.withdrawCash(anyLong(), anyString(), anyString(), any()))
+        .thenReturn(cashResponse());
+    when(bankCoreClient.createTransfer(anyLong(), anyString(), anyString(), any()))
+        .thenReturn(createTransferResponse());
+    when(bankCoreClient.approveTransfer(anyLong(), anyString(), anyLong()))
+        .thenThrow(new RuntimeException("approve 실패"));
+    when(bankCoreClient.getTransfer(anyLong(), anyString(), anyLong())).thenReturn(detailResp);
+    when(stockCoreClient.depositCash(anyLong(), anyString(), anyString(), any()))
+        .thenReturn(cashResponse());
+
+    assertThatThrownBy(
+            () ->
+                sagaOrchestrator.stockToBank(
+                    buildRequest(),
+                    IDEM_KEY,
+                    X_USER_ID,
+                    TRACE_ID,
+                    FROM_ACCOUNT_NUMBER,
+                    SETTLEMENT_ACCOUNT_ID,
+                    SETTLEMENT_X_USER_ID))
+        .isInstanceOf(SagaException.class);
+
+    verify(stockCoreClient).depositCash(anyLong(), anyString(), anyString(), any());
+    verify(sagaStateManager).compensatedSaga(eq(SAGA_ID), eq(IDEM_KEY), anyString());
+  }
+
+  @Test
+  void stockToBank_STEP3실패후상태조회도실패_UNKNOWN() {
+    SagaTransaction saga = newMockSaga();
+    when(idempotencyService.check(anyString(), anyString(), eq("STOCK_TO_BANK")))
+        .thenReturn(Optional.empty());
+    when(sagaStateManager.initSaga(any(), anyString(), anyString())).thenReturn(saga);
+    when(stockCoreClient.withdrawCash(anyLong(), anyString(), anyString(), any()))
+        .thenReturn(cashResponse());
+    when(bankCoreClient.createTransfer(anyLong(), anyString(), anyString(), any()))
+        .thenReturn(createTransferResponse());
+    when(bankCoreClient.approveTransfer(anyLong(), anyString(), anyLong()))
+        .thenThrow(new RuntimeException("approve timeout"));
+    when(bankCoreClient.getTransfer(anyLong(), anyString(), anyLong()))
+        .thenThrow(new RuntimeException("bank 조회 실패"));
+
+    assertThatThrownBy(
+            () ->
+                sagaOrchestrator.stockToBank(
+                    buildRequest(),
+                    IDEM_KEY,
+                    X_USER_ID,
+                    TRACE_ID,
+                    FROM_ACCOUNT_NUMBER,
+                    SETTLEMENT_ACCOUNT_ID,
+                    SETTLEMENT_X_USER_ID))
+        .isInstanceOf(SagaException.class);
+
+    verify(sagaStateManager).unknownSaga(eq(SAGA_ID), eq(IDEM_KEY), anyString(), anyString());
+  }
+
+  @Test
+  void stockToBank_중복요청_캐시응답반환() {
+    String cached =
+        "{\"transferId\":6001,\"transferStatus\":\"SUCCESS\",\"requestedAt\":\"2026-06-09T10:00:00\"}";
+    when(idempotencyService.check(anyString(), anyString(), eq("STOCK_TO_BANK")))
+        .thenReturn(Optional.of(cached));
+
+    BaasTransferCreateResponse result =
+        sagaOrchestrator.stockToBank(
+            buildRequest(),
+            IDEM_KEY,
+            X_USER_ID,
+            TRACE_ID,
+            FROM_ACCOUNT_NUMBER,
+            SETTLEMENT_ACCOUNT_ID,
+            SETTLEMENT_X_USER_ID);
+
+    assertThat(result.getTransferId()).isEqualTo(6001L);
+    verify(sagaStateManager, never()).initSaga(any(), anyString(), anyString());
+    verify(stockCoreClient, never()).withdrawCash(anyLong(), anyString(), anyString(), any());
+  }
 }
