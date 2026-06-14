@@ -21,6 +21,7 @@ import com.transaction.global.config.StockFeignConfig;
 import com.transaction.global.response.ApiResponse;
 import com.transaction.global.response.PageResponse;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,6 +34,9 @@ import org.springframework.web.bind.annotation.RequestParam;
     url = "${core.stock.url}",
     configuration = StockFeignConfig.class)
 public interface StockCoreClient {
+
+  @GetMapping("/internal/v1/stock/health")
+  ResponseEntity<Void> checkHealth();
 
   @GetMapping("/internal/v1/stock/search")
   ApiResponse<BaasStockSearchResponse> searchStocks(
