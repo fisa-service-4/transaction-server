@@ -1,16 +1,15 @@
-package com.transaction.domain.bank.dto.response;
+package com.transaction.domain.card.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.ArrayList;
 import java.util.List;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-@AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class BaasTransactionCategoryListResponse {
+public class BaasCardListResponse {
 
-  private List<BaasTransactionCategoryResponse> categories;
+  private List<BaasCardItemResponse> content = new ArrayList<>();
 }

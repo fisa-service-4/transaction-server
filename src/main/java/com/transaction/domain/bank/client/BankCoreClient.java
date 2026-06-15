@@ -6,15 +6,15 @@ import com.transaction.domain.bank.dto.response.AccountValidateResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountBalanceResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
-import com.transaction.domain.bank.dto.response.BaasTransactionCategoryResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferApproveResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferCreateResponse;
 import com.transaction.domain.bank.dto.response.BaasTransferDetailResponse;
+import com.transaction.domain.card.dto.response.BaasCardApprovalResponse;
+import com.transaction.domain.card.dto.response.BaasCardListResponse;
 import com.transaction.global.config.FeignConfig;
 import com.transaction.global.response.ApiResponse;
 import com.transaction.global.response.PageResponse;
-import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -63,14 +63,6 @@ public interface BankCoreClient {
       @RequestParam(required = false) Integer page,
       @RequestParam(required = false) Integer size);
 
-  @GetMapping("/internal/v1/bank/accounts/{accountId}/transactions/categories")
-  ApiResponse<List<BaasTransactionCategoryResponse>> getTransactionCategories(
-      @RequestHeader("X-User-Id") Long userId,
-      @RequestHeader("X-Trace-Id") String traceId,
-      @PathVariable("accountId") Long accountId,
-      @RequestParam String fromDate,
-      @RequestParam String toDate);
-
   @PostMapping("/internal/v1/bank/accounts/validate")
   ApiResponse<AccountValidateResponse> validateAccount(
       @RequestHeader("X-User-Id") Long userId,
@@ -101,4 +93,22 @@ public interface BankCoreClient {
       @RequestHeader("X-User-Id") Long userId,
       @RequestHeader("X-Trace-Id") String traceId,
       @PathVariable("transferId") Long transferId);
+
+  @GetMapping("/internal/v1/card/accounts/{accountId}/cards")
+  ApiResponse<BaasCardListResponse> getCardsByAccount(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @PathVariable("accountId") Long accountId);
+
+  @GetMapping("/internal/v1/card/cards/{cardId}/approvals")
+  ApiResponse<PageResponse<BaasCardApprovalResponse>> getCardApprovals(
+      @RequestHeader("X-User-Id") Long userId,
+      @RequestHeader("X-Trace-Id") String traceId,
+      @PathVariable("cardId") Long cardId,
+      @RequestParam(required = false) String fromDate,
+      @RequestParam(required = false) String toDate,
+      @RequestParam(required = false) String approvalStatus,
+      @RequestParam(required = false) String merchantCategory,
+      @RequestParam(required = false) Integer page,
+      @RequestParam(required = false) Integer size);
 }

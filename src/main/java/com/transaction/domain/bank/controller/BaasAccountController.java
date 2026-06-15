@@ -3,7 +3,6 @@ package com.transaction.domain.bank.controller;
 import com.transaction.domain.bank.dto.response.BaasAccountBalanceResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
-import com.transaction.domain.bank.dto.response.BaasTransactionCategoryListResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionResponse;
 import com.transaction.domain.bank.service.BaasAccountService;
 import com.transaction.global.response.ApiResponse;
@@ -148,32 +147,6 @@ public class BaasAccountController {
 
     log.info(
         "[BaasAccountController] GET /baas/v1/bank/accounts/{}/transactions/filter 완료: traceId={}",
-        accountId,
-        traceId);
-
-    return response;
-  }
-
-  @Operation(summary = "거래 카테고리 집계 조회")
-  @GetMapping("/{accountId}/transactions/categories")
-  public ApiResponse<BaasTransactionCategoryListResponse> getTransactionCategories(
-      @PathVariable Long accountId,
-      @RequestParam String fromDate,
-      @RequestParam String toDate,
-      HttpServletRequest httpRequest) {
-    String traceId = generateTraceId();
-    httpRequest.setAttribute("traceId", traceId);
-
-    log.info(
-        "[BaasAccountController] GET /baas/v1/bank/accounts/{}/transactions/categories 요청: traceId={}",
-        accountId,
-        traceId);
-
-    ApiResponse<BaasTransactionCategoryListResponse> response =
-        baasAccountService.getTransactionCategories(traceId, accountId, fromDate, toDate);
-
-    log.info(
-        "[BaasAccountController] GET /baas/v1/bank/accounts/{}/transactions/categories 완료: traceId={}",
         accountId,
         traceId);
 

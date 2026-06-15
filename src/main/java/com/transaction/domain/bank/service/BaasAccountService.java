@@ -4,14 +4,11 @@ import com.transaction.domain.bank.client.BankCoreClient;
 import com.transaction.domain.bank.dto.response.BaasAccountBalanceResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountDetailResponse;
 import com.transaction.domain.bank.dto.response.BaasAccountListResponse;
-import com.transaction.domain.bank.dto.response.BaasTransactionCategoryListResponse;
-import com.transaction.domain.bank.dto.response.BaasTransactionCategoryResponse;
 import com.transaction.domain.bank.dto.response.BaasTransactionResponse;
 import com.transaction.global.exception.BankCoreException;
 import com.transaction.global.resolver.UserResolver;
 import com.transaction.global.response.ApiResponse;
 import com.transaction.global.response.PageResponse;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -128,24 +125,5 @@ public class BaasAccountService {
         response.getData().getTotalElements());
 
     return ApiResponse.success(response.getData(), traceId);
-  }
-
-  public ApiResponse<BaasTransactionCategoryListResponse> getTransactionCategories(
-      String traceId, Long accountId, String fromDate, String toDate) {
-    Long xUserId = userResolver.resolveByAccount(accountId, "BANK");
-    log.info(
-        "[BaasAccountService] getTransactionCategories 시작: xUserId={}, traceId={}, accountId={}",
-        xUserId,
-        traceId,
-        accountId);
-
-    ApiResponse<List<BaasTransactionCategoryResponse>> response =
-        bankCoreClient.getTransactionCategories(xUserId, traceId, accountId, fromDate, toDate);
-
-    log.info(
-        "[BaasAccountService] bank-server getTransactionCategories 완료: accountId={}", accountId);
-
-    return ApiResponse.success(
-        new BaasTransactionCategoryListResponse(response.getData()), traceId);
   }
 }
