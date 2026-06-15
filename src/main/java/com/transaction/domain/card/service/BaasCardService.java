@@ -29,12 +29,14 @@ public class BaasCardService {
     ApiResponse<BaasCardListResponse> response =
         bankCoreClient.getCardsByAccount(xUserId, traceId, accountId);
 
+    BaasCardListResponse data = response != null ? response.getData() : null;
+    int count = (data != null && data.getContent() != null) ? data.getContent().size() : 0;
     log.info(
         "[BaasCardService] card-server getCardsByAccount 완료: accountId={}, count={}",
         accountId,
-        response.getData().getContent() != null ? response.getData().getContent().size() : 0);
+        count);
 
-    return ApiResponse.success(response.getData(), traceId);
+    return ApiResponse.success(data, traceId);
   }
 
   public ApiResponse<PageResponse<BaasCardApprovalResponse>> getCardApprovals(
@@ -65,11 +67,13 @@ public class BaasCardService {
             page,
             size);
 
+    PageResponse<BaasCardApprovalResponse> data = response != null ? response.getData() : null;
+    long totalElements = data != null ? data.getTotalElements() : 0L;
     log.info(
         "[BaasCardService] card-server getCardApprovals 완료: cardId={}, totalElements={}",
         cardId,
-        response.getData().getTotalElements());
+        totalElements);
 
-    return ApiResponse.success(response.getData(), traceId);
+    return ApiResponse.success(data, traceId);
   }
 }
