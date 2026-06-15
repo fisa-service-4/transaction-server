@@ -122,8 +122,7 @@ class BaasCardServiceTest {
       // given
       given(userResolver.resolveByAccount(ACCOUNT_ID, "BANK")).willReturn(USER_ID);
       given(bankCoreClient.getCardsByAccount(USER_ID, TRACE_ID, ACCOUNT_ID))
-          .willThrow(
-              new BankCoreException("ACCOUNT_001", "계좌를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+          .willThrow(new BankCoreException("ACCOUNT_001", "계좌를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
       // when & then
       assertThatThrownBy(() -> baasCardService.getCardsByAccount(TRACE_ID, ACCOUNT_ID))
@@ -158,14 +157,20 @@ class BaasCardServiceTest {
       // xUserId는 서비스 내부에서 0L로 고정
       given(
               bankCoreClient.getCardApprovals(
-                  eq(0L), eq(TRACE_ID), eq(CARD_ID),
-                  isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
+                  eq(0L),
+                  eq(TRACE_ID),
+                  eq(CARD_ID),
+                  isNull(),
+                  isNull(),
+                  isNull(),
+                  isNull(),
+                  isNull(),
+                  isNull()))
           .willReturn(ApiResponse.success(pageResponse, TRACE_ID));
 
       // when
       ApiResponse<PageResponse<BaasCardApprovalResponse>> response =
-          baasCardService.getCardApprovals(
-              TRACE_ID, CARD_ID, null, null, null, null, null, null);
+          baasCardService.getCardApprovals(TRACE_ID, CARD_ID, null, null, null, null, null, null);
 
       // then
       assertThat(response.isSuccess()).isTrue();
@@ -188,9 +193,15 @@ class BaasCardServiceTest {
 
       given(
               bankCoreClient.getCardApprovals(
-                  eq(0L), eq(TRACE_ID), eq(CARD_ID),
-                  eq("2026-05-01"), eq("2026-05-31"),
-                  eq("APPROVED"), eq("CAFE"), eq(0), eq(20)))
+                  eq(0L),
+                  eq(TRACE_ID),
+                  eq(CARD_ID),
+                  eq("2026-05-01"),
+                  eq("2026-05-31"),
+                  eq("APPROVED"),
+                  eq("CAFE"),
+                  eq(0),
+                  eq(20)))
           .willReturn(ApiResponse.success(pageResponse, TRACE_ID));
 
       // when
@@ -210,10 +221,8 @@ class BaasCardServiceTest {
       // given
       given(
               bankCoreClient.getCardApprovals(
-                  anyLong(), anyString(), anyLong(),
-                  any(), any(), any(), any(), any(), any()))
-          .willThrow(
-              new BankCoreException("CARD_001", "카드를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+                  anyLong(), anyString(), anyLong(), any(), any(), any(), any(), any(), any()))
+          .willThrow(new BankCoreException("CARD_001", "카드를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
       // when & then
       assertThatThrownBy(
@@ -230,10 +239,8 @@ class BaasCardServiceTest {
       // given
       given(
               bankCoreClient.getCardApprovals(
-                  anyLong(), anyString(), anyLong(),
-                  any(), any(), any(), any(), any(), any()))
-          .willThrow(
-              new BankCoreException("CARD_002", "본인 카드가 아닙니다", HttpStatus.FORBIDDEN));
+                  anyLong(), anyString(), anyLong(), any(), any(), any(), any(), any(), any()))
+          .willThrow(new BankCoreException("CARD_002", "본인 카드가 아닙니다", HttpStatus.FORBIDDEN));
 
       // when & then
       assertThatThrownBy(

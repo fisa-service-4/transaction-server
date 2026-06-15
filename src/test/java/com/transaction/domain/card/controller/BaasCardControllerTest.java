@@ -108,8 +108,7 @@ class BaasCardControllerTest {
     void bankCoreAccountNotFound() throws Exception {
       // given
       given(baasCardService.getCardsByAccount(anyString(), eq(1001L)))
-          .willThrow(
-              new BankCoreException("ACCOUNT_001", "계좌를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+          .willThrow(new BankCoreException("ACCOUNT_001", "계좌를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
       // when & then
       mockMvc
@@ -135,8 +134,7 @@ class BaasCardControllerTest {
       ReflectionTestUtils.setField(approval, "merchantCategory", "CAFE");
       ReflectionTestUtils.setField(approval, "approvalAmount", BigDecimal.valueOf(5500));
       ReflectionTestUtils.setField(approval, "approvalStatus", "APPROVED");
-      ReflectionTestUtils.setField(
-          approval, "approvedAt", LocalDateTime.of(2026, 5, 17, 12, 0, 0));
+      ReflectionTestUtils.setField(approval, "approvedAt", LocalDateTime.of(2026, 5, 17, 12, 0, 0));
 
       PageResponse<BaasCardApprovalResponse> pageResponse = new PageResponse<>();
       ReflectionTestUtils.setField(pageResponse, "content", List.of(approval));
@@ -211,8 +209,7 @@ class BaasCardControllerTest {
       given(
               baasCardService.getCardApprovals(
                   anyString(), eq(9999L), any(), any(), any(), any(), any(), any()))
-          .willThrow(
-              new BankCoreException("CARD_001", "카드를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+          .willThrow(new BankCoreException("CARD_001", "카드를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
       // when & then
       mockMvc
@@ -249,8 +246,7 @@ class BaasCardControllerTest {
               baasCardService.getCardApprovals(
                   anyString(), eq(1L), any(), any(), any(), any(), any(), any()))
           .willThrow(
-              new BankCoreException(
-                  "CARD_003", "카드 승인 내역을 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+              new BankCoreException("CARD_003", "카드 승인 내역을 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
       // when & then
       mockMvc
