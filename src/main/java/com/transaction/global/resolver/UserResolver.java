@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UserResolver {
 
-  private static final String SYSTEM_ACCOUNT_TYPE = "SYSTEM";
   private static final long SYSTEM_ACCOUNT_ID = 0L;
 
   private final UserAccountMappingRepository userAccountMappingRepository;
@@ -48,7 +47,7 @@ public class UserResolver {
   }
 
   public Long systemUserId() {
-    return resolveByAccount(SYSTEM_ACCOUNT_ID, SYSTEM_ACCOUNT_TYPE);
+    return SYSTEM_ACCOUNT_ID;
   }
 
   public Long resolveByFirebaseUid(String firebaseUid) {
